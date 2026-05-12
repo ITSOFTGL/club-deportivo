@@ -24,6 +24,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: AccessTokenPayload): Promise<AuthUser> {
+    console.log('🔍 JWT Strategy - payload recibido:', payload);  // Depuración
+    
     const user = await this.prismaService.prisma.user.findUnique({
       where: { id: payload.sub },
       select: { id: true, email: true, role: true, status: true },

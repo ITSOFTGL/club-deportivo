@@ -19,30 +19,46 @@ import {
   UpdateUserStatusDto,
 } from './dto/user.dto';
 import { UsersService } from './users.service';
+// 🔥 Agrega estas importaciones
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+// 🔥 Agrega el decorador ApiTags a la clase
+@ApiTags('users')
+@ApiBearerAuth()
 @Controller('users')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get()
+  // 🔥 Agrega estos decoradores al método
+  @ApiOperation({ summary: 'Obtener todos los usuarios', description: 'Lista todos los usuarios (solo administradores)' })
+  @ApiResponse({ status: 200, description: 'Lista de usuarios obtenida exitosamente' })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
   findAll(@CurrentUser() actor: AuthUser) {
     return this.users.findAll(actor);
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obtener un usuario por ID' })
+  @ApiResponse({ status: 200, description: 'Usuario encontrado' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
   findOne(@Param('id') id: string, @CurrentUser() actor: AuthUser) {
     return this.users.findOne(id, actor);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Post()
+  @ApiOperation({ summary: 'Crear un nuevo usuario' })
+  @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
   create(@Body() dto: CreateUserDto, @CurrentUser() actor: AuthUser) {
     return this.users.create(dto, actor);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar un usuario' })
+  @ApiResponse({ status: 200, description: 'Usuario actualizado' })
   update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
@@ -53,6 +69,7 @@ export class UsersController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch(':id/role')
+  @ApiOperation({ summary: 'Cambiar rol de un usuario' })
   changeRole(
     @Param('id') id: string,
     @Body() dto: ChangeRoleDto,
@@ -63,6 +80,7 @@ export class UsersController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch(':id/status')
+  @ApiOperation({ summary: 'Cambiar estado de un usuario' })
   changeStatus(
     @Param('id') id: string,
     @Body() dto: UpdateUserStatusDto,
@@ -73,6 +91,7 @@ export class UsersController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch(':id/password')
+  @ApiOperation({ summary: 'Restablecer contraseña de un usuario' })
   resetPassword(
     @Param('id') id: string,
     @Body() dto: AdminResetPasswordDto,
@@ -83,6 +102,7 @@ export class UsersController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar (soft delete) un usuario' })
   softDelete(@Param('id') id: string, @CurrentUser() actor: AuthUser) {
     return this.users.softDelete(id, actor);
   }

@@ -5,13 +5,11 @@ import {
 } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { sanitizeUser } from '../common/utils/sanitize-user';
-
-const FIXED_SECRET = 'SuperSecretKey123456789';
 
 @Injectable()
 export class AuthService {
@@ -38,7 +36,7 @@ export class AuthService {
       where: { id: user.id },
       data: { lastLogin: new Date() },
     });
-    const token = this.signToken(user.id, user.email, user.role);
+    const token = await this.signToken(user.id, user.email, user.role);
     return {
       access_token: token,
       user: sanitizeUser(user),
@@ -66,13 +64,21 @@ export class AuthService {
         birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
       },
     });
-    const token = this.signToken(user.id, user.email, user.role);
+    const token = await this.signToken(user.id, user.email, user.role);
     return { access_token: token, user: sanitizeUser(user) };
   }
 
-  private signToken(userId: string, email: string, role: UserRole) {
-    const payload = { sub: userId, email, role };
-    const token = jwt.sign(payload, FIXED_SECRET, { expiresIn: '7d' });
+  private async signToken(userId: string, email: string, role: UserRole) {
+    const secret = new TextEncoder().encode(
+      process.env.JWT_SECRET || 'SuperSecretKey123456789'
+    );
+    
+    const token = await new SignJWT({ sub: userId, email, role })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('7d')
+      .sign(secret);
+    
     return token;
   }
 }
