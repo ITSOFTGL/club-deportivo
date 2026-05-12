@@ -1,26 +1,60 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentDto } from './dto/update-enrollment.dto';
 
 @Injectable()
 export class EnrollmentsService {
-  create(createEnrollmentDto: CreateEnrollmentDto) {
-    return 'This action adds a new enrollment';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createDto: CreateEnrollmentDto) {
+    return this.prismaService.prisma.enrollment.create({
+      data: {
+        studentId: createDto.studentId,
+        categoryShiftId: createDto.categoryShiftId,
+        status: createDto.status ?? 'ENROLLED',
+        enrolledBy: createDto.enrolledBy,
+        startDate: new Date(),
+      },
+      include: { student: true, categoryShift: true },
+    });
   }
 
-  findAll() {
-    return `This action returns all enrollments`;
+  async findAll() {
+    return this.prismaService.prisma.enrollment.findMany({
+      include: { student: true, categoryShift: true },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} enrollment`;
+  async findByStudent(studentId: string) {
+    return this.prismaService.prisma.enrollment.findMany({
+      where: { studentId },
+      include: { student: true, categoryShift: true },
+    });
   }
 
-  update(id: number, updateEnrollmentDto: UpdateEnrollmentDto) {
-    return `This action updates a #${id} enrollment`;
+  async findOne(id: string) {
+    const enrollment = await this.prismaService.prisma.enrollment.findUnique({
+      where: { id },
+      include: { student: true, categoryShift: true },
+    });
+    if (!enrollment) throw new NotFoundException('Inscripción no encontrada');
+    return enrollment;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} enrollment`;
+  async update(id: string, updateDto: UpdateEnrollmentDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.enrollment.update({
+      where: { id },
+      data: updateDto,
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.enrollment.update({
+      where: { id },
+      data: { status: 'CANCELLED' },
+    });
   }
 }

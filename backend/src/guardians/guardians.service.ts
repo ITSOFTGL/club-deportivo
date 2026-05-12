@@ -1,26 +1,59 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateGuardianDto } from './dto/create-guardian.dto';
 import { UpdateGuardianDto } from './dto/update-guardian.dto';
 
 @Injectable()
 export class GuardiansService {
-  create(createGuardianDto: CreateGuardianDto) {
-    return 'This action adds a new guardian';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createDto: CreateGuardianDto) {
+    return this.prismaService.prisma.guardian.create({
+      data: {
+        ...createDto,
+        isPrimary: createDto.isPrimary ?? false,
+      },
+      include: { student: true },
+    });
   }
 
-  findAll() {
-    return `This action returns all guardians`;
+  async findAll() {
+    return this.prismaService.prisma.guardian.findMany({
+      where: { isActive: true },
+      include: { student: true },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} guardian`;
+  async findByStudent(studentId: string) {
+    return this.prismaService.prisma.guardian.findMany({
+      where: { studentId, isActive: true },
+      include: { student: true },
+    });
   }
 
-  update(id: number, updateGuardianDto: UpdateGuardianDto) {
-    return `This action updates a #${id} guardian`;
+  async findOne(id: string) {
+    const guardian = await this.prismaService.prisma.guardian.findUnique({
+      where: { id },
+      include: { student: true },
+    });
+    if (!guardian) throw new NotFoundException('Apoderado no encontrado');
+    return guardian;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} guardian`;
+  async update(id: string, updateDto: UpdateGuardianDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.guardian.update({
+      where: { id },
+      data: updateDto,
+      include: { student: true },
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.guardian.update({
+      where: { id },
+      data: { isActive: false },
+    });
   }
 }

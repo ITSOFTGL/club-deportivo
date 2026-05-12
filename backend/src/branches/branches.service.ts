@@ -1,26 +1,49 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
 
 @Injectable()
 export class BranchesService {
-  create(createBranchDto: CreateBranchDto) {
-    return 'This action adds a new branch';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createBranchDto: CreateBranchDto) {
+    return this.prismaService.prisma.branch.create({
+      data: {
+        ...createBranchDto,
+        isActive: createBranchDto.isActive ?? true,
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all branches`;
+  async findAll() {
+    return this.prismaService.prisma.branch.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} branch`;
+  async findOne(id: string) {
+    const branch = await this.prismaService.prisma.branch.findUnique({
+      where: { id },
+    });
+    if (!branch) throw new NotFoundException('Sucursal no encontrada');
+    return branch;
   }
 
-  update(id: number, updateBranchDto: UpdateBranchDto) {
-    return `This action updates a #${id} branch`;
+  async update(id: string, updateBranchDto: UpdateBranchDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.branch.update({
+      where: { id },
+      data: updateBranchDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} branch`;
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.branch.update({
+      where: { id },
+      data: { isActive: false },
+    });
   }
 }

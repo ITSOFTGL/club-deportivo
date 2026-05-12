@@ -1,26 +1,96 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { PaymentStatus, PaymentMethod } from '@prisma/client';
+import * as QRCode from 'qrcode';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { UpdatePaymentDto } from './dto/update-payment.dto';
 
 @Injectable()
 export class PaymentsService {
-  create(createPaymentDto: CreatePaymentDto) {
-    return 'This action adds a new payment';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async generateQR(studentId: string, amount: number) {
+    const student = await this.prismaService.prisma.student.findUnique({
+      where: { id: studentId },
+      include: { category: true },
+    });
+    if (!student) throw new NotFoundException('Alumno no encontrado');
+
+    const paymentData = {
+      studentId,
+      studentName: `${student.name} ${student.lastName}`,
+      amount,
+      concept: `Mensualidad ${student.category.name}`,
+      date: new Date().toISOString(),
+    };
+
+    const qrCode = await QRCode.toDataURL(JSON.stringify(paymentData));
+    
+    return {
+      qrCode,
+      paymentData,
+      expiresIn: '24h',
+    };
   }
 
-  findAll() {
-    return `This action returns all payments`;
+  async create(dto: CreatePaymentDto) {
+    const student = await this.prismaService.prisma.student.findUnique({
+      where: { id: dto.studentId },
+    });
+    if (!student) throw new NotFoundException('Alumno no encontrado');
+
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+
+    const payment = await this.prismaService.prisma.payment.create({
+      data: {
+        reservationId: `PAY-${Date.now()}`,
+        amount: dto.amount,
+        total: dto.amount,
+        method: dto.method || PaymentMethod.QR,
+        status: PaymentStatus.PAID,
+        paymentDate: new Date(),
+        monthsCovered: 1,
+        paidUntilMonth: currentMonth,
+        students: {
+          connect: { id: dto.studentId },
+        },
+      },
+    });
+
+    await this.prismaService.prisma.paymentHistory.create({
+      data: {
+        studentId: dto.studentId,
+        month: currentMonth,
+        amount: dto.amount,
+        status: 'PAID',
+        dueDate: new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 5),
+        paidDate: new Date(),
+      },
+    });
+
+    return payment;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} payment`;
+  async findAll() {
+    return this.prismaService.prisma.payment.findMany({
+      include: { students: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  update(id: number, updatePaymentDto: UpdatePaymentDto) {
-    return `This action updates a #${id} payment`;
+  async findByStudent(studentId: string) {
+    return this.prismaService.prisma.paymentHistory.findMany({
+      where: { studentId },
+      orderBy: { month: 'desc' },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} payment`;
+  async findOne(id: string) {
+    const payment = await this.prismaService.prisma.payment.findUnique({
+      where: { id },
+      include: { students: true },
+    });
+    if (!payment) throw new NotFoundException('Pago no encontrado');
+    return payment;
   }
 }

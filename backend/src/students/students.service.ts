@@ -1,26 +1,72 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 
 @Injectable()
 export class StudentsService {
-  create(createStudentDto: CreateStudentDto) {
-    return 'This action adds a new student';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createDto: CreateStudentDto) {
+    return this.prismaService.prisma.student.create({
+      data: {
+        name: createDto.name,
+        lastName: createDto.lastName,
+        birthDate: new Date(createDto.birthDate),
+        documentId: createDto.documentId,
+        gender: createDto.gender,
+        weight: createDto.weight,
+        height: createDto.height,
+        medicalNotes: createDto.medicalNotes,
+        parentId: createDto.parentId,
+        branchId: createDto.branchId,
+        categoryId: createDto.categoryId,
+        status: 'ACTIVE',
+      },
+      include: { parent: true, branch: true, category: true },
+    });
   }
 
-  findAll() {
-    return `This action returns all students`;
+  async findAll() {
+    return this.prismaService.prisma.student.findMany({
+      where: { status: 'ACTIVE' },
+      include: { parent: true, branch: true, category: true },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} student`;
+  async findByParent(parentId: string) {
+    return this.prismaService.prisma.student.findMany({
+      where: { parentId, status: 'ACTIVE' },
+      include: { branch: true, category: true },
+    });
   }
 
-  update(id: number, updateStudentDto: UpdateStudentDto) {
-    return `This action updates a #${id} student`;
+  async findOne(id: string) {
+    const student = await this.prismaService.prisma.student.findUnique({
+      where: { id },
+      include: { parent: true, branch: true, category: true, guardians: true },
+    });
+    if (!student) throw new NotFoundException('Alumno no encontrado');
+    return student;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} student`;
+  async update(id: string, updateDto: UpdateStudentDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.student.update({
+      where: { id },
+      data: {
+        ...updateDto,
+        birthDate: updateDto.birthDate ? new Date(updateDto.birthDate) : undefined,
+      },
+      include: { parent: true, branch: true, category: true },
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.student.update({
+      where: { id },
+      data: { status: 'INACTIVE' },
+    });
   }
 }
