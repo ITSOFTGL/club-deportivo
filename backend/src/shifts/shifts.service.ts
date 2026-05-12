@@ -1,26 +1,51 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
 
 @Injectable()
 export class ShiftsService {
-  create(createShiftDto: CreateShiftDto) {
-    return 'This action adds a new shift';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createDto: CreateShiftDto) {
+    return this.prismaService.prisma.shift.create({
+      data: {
+        name: createDto.name,
+        startTime: createDto.startTime,
+        endTime: createDto.endTime,
+        isActive: createDto.isActive ?? true,
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all shifts`;
+  async findAll() {
+    return this.prismaService.prisma.shift.findMany({
+      where: { isActive: true },
+      orderBy: { startTime: 'asc' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} shift`;
+  async findOne(id: string) {
+    const shift = await this.prismaService.prisma.shift.findUnique({
+      where: { id },
+    });
+    if (!shift) throw new NotFoundException('Turno no encontrado');
+    return shift;
   }
 
-  update(id: number, updateShiftDto: UpdateShiftDto) {
-    return `This action updates a #${id} shift`;
+  async update(id: string, updateDto: UpdateShiftDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.shift.update({
+      where: { id },
+      data: updateDto,
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} shift`;
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.shift.update({
+      where: { id },
+      data: { isActive: false },
+    });
   }
 }

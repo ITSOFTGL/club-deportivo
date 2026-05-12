@@ -1,26 +1,62 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDocumentDto } from './dto/create-student-document.dto';
 import { UpdateStudentDocumentDto } from './dto/update-student-document.dto';
 
 @Injectable()
 export class StudentDocumentsService {
-  create(createStudentDocumentDto: CreateStudentDocumentDto) {
-    return 'This action adds a new studentDocument';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createDto: CreateStudentDocumentDto) {
+    return this.prismaService.prisma.studentDocument.create({
+      data: {
+        ...createDto,
+        isVerified: createDto.isVerified ?? false,
+      },
+      include: { student: true },
+    });
   }
 
-  findAll() {
-    return `This action returns all studentDocuments`;
+  async findAll() {
+    return this.prismaService.prisma.studentDocument.findMany({
+      include: { student: true },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} studentDocument`;
+  async findByStudent(studentId: string) {
+    return this.prismaService.prisma.studentDocument.findMany({
+      where: { studentId },
+      include: { student: true },
+    });
   }
 
-  update(id: number, updateStudentDocumentDto: UpdateStudentDocumentDto) {
-    return `This action updates a #${id} studentDocument`;
+  async findOne(id: string) {
+    const document = await this.prismaService.prisma.studentDocument.findUnique({
+      where: { id },
+      include: { student: true },
+    });
+    if (!document) throw new NotFoundException('Documento no encontrado');
+    return document;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} studentDocument`;
+  async verify(id: string, verifiedBy: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.studentDocument.update({
+      where: { id },
+      data: { isVerified: true, verifiedBy, verifiedAt: new Date() },
+    });
+  }
+
+  async update(id: string, updateDto: UpdateStudentDocumentDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.studentDocument.update({
+      where: { id },
+      data: updateDto,
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.studentDocument.delete({ where: { id } });
   }
 }

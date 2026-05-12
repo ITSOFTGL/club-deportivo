@@ -1,26 +1,66 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeacherProfileDto } from './dto/create-teacher-profile.dto';
 import { UpdateTeacherProfileDto } from './dto/update-teacher-profile.dto';
 
 @Injectable()
 export class TeacherProfilesService {
-  create(createTeacherProfileDto: CreateTeacherProfileDto) {
-    return 'This action adds a new teacherProfile';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createDto: CreateTeacherProfileDto) {
+    return this.prismaService.prisma.teacherProfile.create({
+      data: {
+        userId: createDto.userId,
+        documentId: createDto.documentId,
+        phone: createDto.phone,
+        emergencyPhone: createDto.emergencyPhone,
+        address: createDto.address,
+        specialty: createDto.specialty,
+        experienceYears: createDto.experienceYears,
+        certifications: createDto.certifications,
+        cvUrl: createDto.cvUrl,
+        isActive: true,
+      },
+      include: { user: true },
+    });
   }
 
-  findAll() {
-    return `This action returns all teacherProfiles`;
+  async findAll() {
+    return this.prismaService.prisma.teacherProfile.findMany({
+      where: { isActive: true },
+      include: { user: true },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} teacherProfile`;
+  async findOne(id: string) {
+    const profile = await this.prismaService.prisma.teacherProfile.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+    if (!profile) throw new NotFoundException('Perfil de profesor no encontrado');
+    return profile;
   }
 
-  update(id: number, updateTeacherProfileDto: UpdateTeacherProfileDto) {
-    return `This action updates a #${id} teacherProfile`;
+  async findByUser(userId: string) {
+    return this.prismaService.prisma.teacherProfile.findUnique({
+      where: { userId },
+      include: { user: true },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} teacherProfile`;
+  async update(id: string, updateDto: UpdateTeacherProfileDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.teacherProfile.update({
+      where: { id },
+      data: updateDto,
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.teacherProfile.update({
+      where: { id },
+      data: { isActive: false },
+    });
   }
 }

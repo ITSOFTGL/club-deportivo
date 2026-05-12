@@ -1,26 +1,65 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 
 @Injectable()
 export class NotificationsService {
-  create(createNotificationDto: CreateNotificationDto) {
-    return 'This action adds a new notification';
+  constructor(private readonly prismaService: PrismaService) {}
+
+  async create(createDto: CreateNotificationDto) {
+    return this.prismaService.prisma.notification.create({
+      data: {
+        userId: createDto.userId,
+        title: createDto.title,
+        message: createDto.message,
+        type: createDto.type,
+        data: createDto.data,
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all notifications`;
+  async findAll(userId?: string) {
+    const where = userId ? { userId } : {};
+    return this.prismaService.prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} notification`;
+  async findOne(id: string) {
+    const notification = await this.prismaService.prisma.notification.findUnique({
+      where: { id },
+    });
+    if (!notification) throw new NotFoundException('Notificación no encontrada');
+    return notification;
   }
 
-  update(id: number, updateNotificationDto: UpdateNotificationDto) {
-    return `This action updates a #${id} notification`;
+  async markAsRead(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.notification.update({
+      where: { id },
+      data: { isRead: true, readAt: new Date() },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} notification`;
+  async markAllAsRead(userId: string) {
+    return this.prismaService.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true, readAt: new Date() },
+    });
+  }
+
+  async update(id: string, updateDto: UpdateNotificationDto) {
+    await this.findOne(id);
+    return this.prismaService.prisma.notification.update({
+      where: { id },
+      data: updateDto,
+    });
+  }
+
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prismaService.prisma.notification.delete({ where: { id } });
   }
 }
