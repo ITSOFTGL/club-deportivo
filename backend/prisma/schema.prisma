@@ -1,0 +1,1251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  COLLECTOR
+  PARENT
+  MEMBER
+  EMPLOYEE
+  SYSTEM_ANALYST
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum UserApprovalStatus {
+  PENDING
+  PRE_REGISTERED
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  QR
+  CASH
+  CARD
+  TRANSFER
+}
+
+enum AttendanceStatus {
+  PENDING
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum CategoryType {
+  SPORT
+  FITNESS
+  POOL
+  TENNIS
+  FOOTBALL
+  BASKETBALL
+  SWIMMING
+  YOGA
+  CROSSFIT
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  WAITING
+  CANCELLED
+  COMPLETED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum EventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum EventType {
+  CHAMPIONSHIP
+  FRIENDLY
+  CAMP
+  CLINIC
+}
+
+enum GuardianRelationship {
+  PADRE
+  MADRE
+  TUTOR
+  ABUELO
+  OTRO
+}
+
+enum BloodType {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+}
+
+enum Gender {
+  MASCULINO
+  FEMENINO
+  OTRO
+}
+
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  EVENING
+}
+
+// ============================================
+// TABLA USERS
+// ============================================
+
+model User {
+  id            String            @id @default(cuid())
+  email         String            @unique
+  documentId    String?           @unique
+  name          String
+  lastName      String
+  phone         String?
+  address       String?
+  birthDate     DateTime?
+  gender        Gender?
+  role          UserRole          @default(MEMBER)
+  status        UserStatus        @default(ACTIVE)
+  membershipStart DateTime         @default(now())
+  membershipEnd   DateTime?
+  password      String            @default("pending")
+  resetToken    String?
+  resetTokenExp DateTime?
+  avatar        String?
+  profileImage  String?
+  bio           String?
+  lastLogin     DateTime?
+  
+  emailVerified       Boolean            @default(false)
+  emailVerifyToken    String?
+  emailVerifyExpires  DateTime?
+  approvalStatus      UserApprovalStatus @default(PENDING)
+  approvedBy          String?
+  approvedAt          DateTime?
+  rejectionReason     String?
+  
+  provider            String?
+  providerId          String?
+  
+  profileCompleted   Boolean   @default(false)
+  invitedBy          String?
+  invitedAt          DateTime?
+  tempPassword       String?
+  passwordChangedAt  DateTime?
+  
+  loginAttempts      Int       @default(0)
+  lastFailedLogin    DateTime?
+  accountLocked      Boolean   @default(false)
+  accountLockedAt    DateTime?
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  categories          UserCategory[]
+  reservations        Reservation[]
+  attendances         Attendance[]
+  notifications       Notification[]
+  teacherAssignments  TeacherAssignment[]
+  securityAudits      SecurityAudit[]
+  userActions         UserActionLog[]
+  teacherProfile      TeacherProfile?
+  collectorProfile    CollectorProfile?
+  children            Student[]
+  orders              Order[]
+  chatMessages        ChatMessage[]
+  chatParticipants    ChatParticipant[]
+  pushNotifications   PushNotification[]
+  
+  @@index([email])
+  @@index([documentId])
+  @@index([status])
+  @@index([role])
+  @@index([approvalStatus])
+  @@index([emailVerified])
+  @@map("users")
+}
+
+// ============================================
+// SUCURSALES
+// ============================================
+
+model Branch {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  location    String
+  phone       String
+  email       String?
+  schedule    String?
+  managerId   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  categories      Category[]
+  students        Student[]
+  categoryShifts  CategoryShift[]
+  orders          Order[]
+  events          Event[]
+  products        Product[]
+  
+  @@map("branches")
+}
+
+// ============================================
+// CATEGORÍAS DEPORTIVAS
+// ============================================
+
+model Category {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String?
+  type        CategoryType  @default(SPORT)
+  monthlyPrice Float
+  maxCapacity Int           @default(20)
+  minAge      Int?
+  maxAge      Int?
+  requiresEquipment Boolean  @default(false)
+  isActive    Boolean       @default(true)
+  image       String?
+  branchId    String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  branch          Branch          @relation(fields: [branchId], references: [id])
+  categoryShifts  CategoryShift[]
+  userCategories  UserCategory[]
+  priceHistory    PriceHistory[]
+  products        Product[]
+  students        Student[]
+  events          Event[]
+  
+  @@index([type])
+  @@index([isActive])
+  @@index([branchId])
+  @@map("categories")
+}
+
+// ============================================
+// TURNOS BASE
+// ============================================
+
+model Shift {
+  id          String     @id @default(cuid())
+  name        String
+  type        ShiftType  @default(MORNING)
+  startTime   String
+  endTime     String
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  
+  categoryShifts CategoryShift[]
+  reservations   Reservation[]
+  attendances    Attendance[]
+  
+  @@map("shifts")
+}
+
+// ============================================
+// CONTROL DE CUPOS Y TURNOS POR CATEGORÍA
+// ============================================
+
+model CategoryShift {
+  id              String   @id @default(cuid())
+  categoryId      String
+  branchId        String
+  shiftId         String
+  name            String
+  startTime       String
+  endTime         String
+  daysOfWeek      String
+  totalCapacity   Int               @default(15)
+  enrolledCount   Int               @default(0)
+  waitingList     Int               @default(0)
+  isActive        Boolean           @default(true)
+  isFull          Boolean           @default(false)
+  enrollmentStart DateTime          @default(now())
+  enrollmentEnd   DateTime
+  monthlyPrice    Float
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  category        Category          @relation(fields: [categoryId], references: [id])
+  branch          Branch            @relation(fields: [branchId], references: [id])
+  shift           Shift             @relation(fields: [shiftId], references: [id])
+  teacherAssignments TeacherAssignment[]
+  enrollments     Enrollment[]
+  
+  @@unique([categoryId, branchId, shiftId])
+  @@index([categoryId])
+  @@index([branchId])
+  @@index([isActive])
+  @@index([isFull])
+  @@map("category_shifts")
+}
+
+// ============================================
+// ASIGNACIÓN DE PROFESORES
+// ============================================
+
+model TeacherAssignment {
+  id              String   @id @default(cuid())
+  teacherId       String
+  categoryShiftId String
+  isLeadTeacher   Boolean  @default(false)
+  role            String   @default("ASSISTANT")
+  assignedAt      DateTime @default(now())
+  assignedBy      String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  teacher         User            @relation(fields: [teacherId], references: [id])
+  categoryShift   CategoryShift   @relation(fields: [categoryShiftId], references: [id])
+  
+  @@unique([teacherId, categoryShiftId])
+  @@index([teacherId])
+  @@index([categoryShiftId])
+  @@map("teacher_assignments")
+}
+
+// ============================================
+// PERFILES DE PROFESORES Y COBRADORES
+// ============================================
+
+model TeacherProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  documentId      String   @unique
+  phone           String
+  emergencyPhone  String?
+  address         String?
+  specialty       String?
+  experienceYears Int?
+  certifications  String[]
+  cvUrl           String?
+  references      Json?
+  availability    Json?
+  rating          Float?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([documentId])
+  @@map("teacher_profiles")
+}
+
+model CollectorProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  documentId      String   @unique
+  phone           String
+  emergencyPhone  String?
+  address         String?
+  experienceYears Int?
+  references      Json?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([documentId])
+  @@map("collector_profiles")
+}
+
+// ============================================
+// ALUMNOS
+// ============================================
+
+model Student {
+  id           String   @id @default(cuid())
+  name         String
+  lastName     String
+  birthDate    DateTime
+  documentId   String?  @unique
+  gender       Gender?
+  weight       Float?
+  height       Float?
+  shoeSize     Int?
+  shirtSize    String?
+  pantsSize    String?
+  medicalNotes String?
+  bloodType    BloodType?
+  emergencyContact String?
+  emergencyPhone String?
+  school       String?
+  grade        String?
+  hasAcefi     Boolean  @default(false)
+  hasAcf       Boolean  @default(false)
+  acefiDate    DateTime?
+  acfDate      DateTime?
+  status       String   @default("ACTIVE")
+  parentId     String
+  branchId     String
+  categoryId   String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  parent       User           @relation(fields: [parentId], references: [id])
+  branch       Branch         @relation(fields: [branchId], references: [id])
+  category     Category       @relation(fields: [categoryId], references: [id])
+  guardians    Guardian[]
+  enrollments  Enrollment[]
+  documents    StudentDocument[]
+  eventRegistrations EventRegistration[]
+  attendances  Attendance[]
+  payments     Payment[]
+  paymentPlans PaymentPlan[]
+  paymentHistories PaymentHistory[]
+  orders       Order[]
+  eventResults EventResult[]
+
+  @@index([parentId])
+  @@index([branchId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("students")
+}
+
+// ============================================
+// APODERADOS
+// ============================================
+
+model Guardian {
+  id           String   @id @default(cuid())
+  studentId    String
+  name         String
+  lastName     String
+  documentId   String   @unique
+  phone        String
+  email        String?
+  relationship GuardianRelationship
+  isPrimary    Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([documentId])
+  @@map("guardians")
+}
+
+// ============================================
+// DOCUMENTOS DE ALUMNOS
+// ============================================
+
+model StudentDocument {
+  id          String   @id @default(cuid())
+  studentId   String
+  type        String
+  url         String
+  fileName    String
+  fileSize    Int
+  mimeType    String
+  isVerified  Boolean  @default(false)
+  verifiedBy  String?
+  verifiedAt  DateTime?
+  uploadedAt  DateTime @default(now())
+  
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  @@index([studentId])
+  @@index([type])
+  @@map("student_documents")
+}
+
+// ============================================
+// INSCRIPCIONES
+// ============================================
+
+model Enrollment {
+  id              String         @id @default(cuid())
+  studentId       String
+  categoryShiftId String
+  status          EnrollmentStatus @default(ENROLLED)
+  waitingPosition Int?
+  startDate       DateTime       @default(now())
+  endDate         DateTime?
+  enrolledBy      String
+  enrolledAt      DateTime       @default(now())
+  notificationSent Boolean        @default(false)
+  lastNotification DateTime?
+  
+  student         Student        @relation(fields: [studentId], references: [id])
+  categoryShift   CategoryShift   @relation(fields: [categoryShiftId], references: [id])
+  
+  @@unique([studentId, categoryShiftId])
+  @@index([studentId])
+  @@index([categoryShiftId])
+  @@index([status])
+  @@map("enrollments")
+}
+
+// ============================================
+// RESERVAS Y ASISTENCIAS
+// ============================================
+
+model Reservation {
+  id          String        @id @default(cuid())
+  shiftId     String
+  userId      String
+  qrCode      String?       @unique
+  qrCodeImage String?
+  status      PaymentStatus @default(PENDING)
+  reservedAt  DateTime      @default(now())
+  expiresAt   DateTime?
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  amount      Float
+  discount    Float         @default(0)
+  finalAmount Float
+  
+  shift       Shift         @relation(fields: [shiftId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  payment     Payment?
+  attendance  Attendance?
+  
+  @@index([shiftId])
+  @@index([userId])
+  @@index([status])
+  @@index([qrCode])
+  @@map("reservations")
+}
+
+model Attendance {
+  id              String         @id @default(cuid())
+  reservationId   String         @unique
+  shiftId         String
+  userId          String
+  studentId       String?
+  status          AttendanceStatus @default(PENDING)
+  checkInTime     DateTime?
+  checkOutTime    DateTime?
+  verifiedBy      String?
+  verifiedMethod  String?
+  observations    String?
+  userRating      Int?
+  userFeedback    String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  reservation     Reservation    @relation(fields: [reservationId], references: [id])
+  shift           Shift          @relation(fields: [shiftId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
+  student         Student?       @relation(fields: [studentId], references: [id])
+  
+  @@index([shiftId])
+  @@index([userId])
+  @@index([studentId])
+  @@index([checkInTime])
+  @@index([status])
+  @@map("attendances")
+}
+
+// ============================================
+// PAGOS Y MENSUALIDADES
+// ============================================
+
+model Payment {
+  id            String        @id @default(cuid())
+  reservationId String        @unique
+  userEmail     String?
+  amount        Float
+  discount      Float         @default(0)
+  total         Float
+  method        PaymentMethod @default(QR)
+  status        PaymentStatus @default(PENDING)
+  qrCode        String?       @unique
+  qrCodeData    String?
+  qrGeneratedAt DateTime?
+  paymentDate   DateTime?
+  expiresAt     DateTime?
+  refundedAt    DateTime?
+  transactionId String?       @unique
+  paymentGateway String?
+  gatewayResponse Json?
+  notes         String?
+  paymentPlanId String?
+  installmentId String?
+  monthsCovered Int           @default(1)
+  paidUntilMonth DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  reservation     Reservation   @relation(fields: [reservationId], references: [id])
+  paymentPlan     PaymentPlan?  @relation(fields: [paymentPlanId], references: [id])
+  installments    PaymentPlanInstallment[]
+  eventRegistrations EventRegistration[]
+  orders          Order[]
+  logs            PaymentLog[]
+  students        Student[]
+  
+  @@index([reservationId])
+  @@index([qrCode])
+  @@index([status])
+  @@index([transactionId])
+  @@index([paymentPlanId])
+  @@map("payments")
+}
+
+model PaymentPlan {
+  id              String   @id @default(cuid())
+  studentId       String
+  type            String
+  monthsCount     Int
+  discountPercent Float    @default(0)
+  discountAmount  Float    @default(0)
+  originalAmount  Float
+  finalAmount     Float
+  status          String   @default("PENDING")
+  qrCode          String?  @unique
+  qrCodeData      String?
+  qrGeneratedAt   DateTime?
+  validFrom       DateTime @default(now())
+  validUntil      DateTime
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+  
+  student      Student  @relation(fields: [studentId], references: [id])
+  installments PaymentPlanInstallment[]
+  payments     Payment[]
+  
+  @@index([studentId])
+  @@index([status])
+  @@index([qrCode])
+  @@map("payment_plans")
+}
+
+model PaymentPlanInstallment {
+  id              String   @id @default(cuid())
+  paymentPlanId   String
+  month           DateTime
+  amount          Float
+  paymentId       String?
+  
+  paymentPlan     PaymentPlan @relation(fields: [paymentPlanId], references: [id], onDelete: Cascade)
+  payment         Payment?    @relation(fields: [paymentId], references: [id])
+  
+  @@unique([paymentPlanId, month])
+  @@index([paymentPlanId])
+  @@index([month])
+  @@map("payment_plan_installments")
+}
+
+model PaymentHistory {
+  id              String   @id @default(cuid())
+  studentId       String
+  month           DateTime
+  amount          Float
+  status          String
+  dueDate         DateTime
+  paidDate        DateTime?
+  paymentPlanId   String?
+  installmentId   String?
+  lateFee         Float    @default(0)
+  discountApplied Float    @default(0)
+  createdAt       DateTime @default(now())
+  
+  student         Student  @relation(fields: [studentId], references: [id])
+  
+  @@unique([studentId, month])
+  @@index([studentId])
+  @@index([month])
+  @@index([status])
+  @@map("payment_histories")
+}
+
+// ============================================
+// EVENTOS Y CAMPEONATOS
+// ============================================
+
+model Event {
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  type          EventType
+  categoryId    String?
+  branchId      String?
+  startDate     DateTime
+  endDate       DateTime
+  registrationStart DateTime    @default(now())
+  registrationEnd   DateTime
+  cost          Float
+  earlyBirdCost Float?
+  earlyBirdDate DateTime?
+  location      String
+  venueName     String?
+  latitude      Float?
+  longitude     Float?
+  gameSchedule  Json?
+  maxParticipants Int          @default(100)
+  currentParticipants Int      @default(0)
+  status        EventStatus    @default(DRAFT)
+  bannerImage   String?
+  gallery       String[]
+  createdBy     String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  category      Category?      @relation(fields: [categoryId], references: [id])
+  branch        Branch?        @relation(fields: [branchId], references: [id])
+  registrations EventRegistration[]
+  results       EventResult[]
+  schedules     GameSchedule[]
+  
+  @@index([type])
+  @@index([status])
+  @@index([startDate])
+  @@map("events")
+}
+
+model EventRegistration {
+  id          String   @id @default(cuid())
+  eventId     String
+  studentId   String
+  status      String   @default("PENDING")
+  paymentId   String?
+  jerseyNumber Int?
+  position    String?
+  notes       String?
+  registeredAt DateTime @default(now())
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  qrCode      String?  @unique
+  qrScanned   Boolean  @default(false)
+  qrScannedAt DateTime?
+  
+  event       Event    @relation(fields: [eventId], references: [id])
+  student     Student  @relation(fields: [studentId], references: [id])
+  payment     Payment? @relation(fields: [paymentId], references: [id])
+  
+  @@unique([eventId, studentId])
+  @@index([eventId])
+  @@index([studentId])
+  @@index([status])
+  @@map("event_registrations")
+}
+
+model EventResult {
+  id          String   @id @default(cuid())
+  eventId     String
+  category    String
+  studentId   String?
+  teamName    String?
+  position    Int?
+  description String?
+  createdAt   DateTime @default(now())
+  
+  event       Event    @relation(fields: [eventId], references: [id])
+  student     Student? @relation(fields: [studentId], references: [id])
+  
+  @@map("event_results")
+}
+
+model GameSchedule {
+  id          String   @id @default(cuid())
+  eventId     String
+  date        DateTime
+  time        String
+  field       String
+  opponent    String
+  location    String?
+  notes       String?
+  
+  event       Event    @relation(fields: [eventId], references: [id])
+  
+  @@index([eventId])
+  @@index([date])
+  @@map("game_schedules")
+}
+
+// ============================================
+// VENTAS DE UNIFORMES Y PRODUCTOS
+// ============================================
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  sku         String   @unique
+  productType String
+  price       Float
+  discountPrice Float?
+  stock       Int      @default(0)
+  minStock    Int      @default(5)
+  sizes       Json?
+  colors      Json?
+  requiresCustomization Boolean @default(false)
+  customizationPrice    Float?
+  categoryId  String?
+  branchId    String?
+  images      String[]
+  mainImage   String?
+  isActive    Boolean  @default(true)
+  isPopular   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  branch      Branch?     @relation(fields: [branchId], references: [id])
+  orderItems  OrderItem[]
+  stockMovements StockMovement[]
+  
+  @@index([sku])
+  @@index([productType])
+  @@index([isActive])
+  @@map("products")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  userId      String
+  studentId   String?
+  buyerName   String
+  buyerEmail  String
+  buyerPhone  String
+  subtotal    Float
+  discount    Float       @default(0)
+  shippingCost Float      @default(0)
+  tax         Float       @default(0)
+  total       Float
+  status      OrderStatus @default(PENDING)
+  paymentId   String?
+  paymentMethod String?
+  paidAt      DateTime?
+  deliveryMethod String    @default("PICKUP")
+  pickupBranchId String?
+  deliveryAddress String?
+  orderDate   DateTime    @default(now())
+  processedAt DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  cancelledAt DateTime?
+  cancellationReason String?
+  createdBy   String?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  user         User        @relation(fields: [userId], references: [id])
+  student      Student?    @relation(fields: [studentId], references: [id])
+  pickupBranch Branch?     @relation(fields: [pickupBranchId], references: [id])
+  payment      Payment?    @relation(fields: [paymentId], references: [id])
+  orderItems   OrderItem[]
+  orderHistory OrderHistory[]
+  
+  @@index([orderNumber])
+  @@index([userId])
+  @@index([studentId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  productName String
+  productPrice Float
+  quantity    Int
+  size        String?
+  color       String?
+  customization String?
+  subtotal    Float
+  
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  @@map("order_items")
+}
+
+model OrderHistory {
+  id          String     @id @default(cuid())
+  orderId     String
+  status      OrderStatus
+  note        String?
+  changedBy   String?
+  createdAt   DateTime   @default(now())
+  
+  order       Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@index([orderId])
+  @@map("order_history")
+}
+
+model StockMovement {
+  id          String   @id @default(cuid())
+  productId   String
+  type        String
+  quantity    Int
+  reason      String
+  referenceId String?
+  note        String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  @@index([productId])
+  @@index([type])
+  @@map("stock_movements")
+}
+
+// ============================================
+// CHAT
+// ============================================
+
+model ChatRoom {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  eventId     String?
+  categoryId  String?
+  branchId    String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  isActive    Boolean  @default(true)
+  
+  messages    ChatMessage[]
+  participants ChatParticipant[]
+  
+  @@index([type])
+  @@map("chat_rooms")
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  roomId      String
+  userId      String
+  message     String
+  attachments String[]
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  
+  room        ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@index([roomId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+model ChatParticipant {
+  id          String   @id @default(cuid())
+  roomId      String
+  userId      String
+  lastReadAt  DateTime @default(now())
+  joinedAt    DateTime @default(now())
+  
+  room        ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@unique([roomId, userId])
+  @@map("chat_participants")
+}
+
+// ============================================
+// NOTIFICACIONES
+// ============================================
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  message     String
+  type        String
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  data        Json?
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model PushNotification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  body        String
+  data        Json?
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  sentAt      DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([isRead])
+  @@map("push_notifications")
+}
+
+// ============================================
+// SISTEMA DE LOGS Y MÉTRICAS
+// ============================================
+
+model SystemMetric {
+  id          String   @id @default(cuid())
+  metricType  String
+  name        String
+  value       Float
+  unit        String?
+  labels      Json?
+  source      String
+  severity    String
+  ipAddress   String?
+  userAgent   String?
+  userId      String?
+  timestamp   DateTime @default(now())
+  
+  @@index([metricType])
+  @@index([severity])
+  @@index([timestamp])
+  @@map("system_metrics")
+}
+
+model BusinessMetric {
+  id          String   @id @default(cuid())
+  date        DateTime @unique
+  totalEnrollments    Int
+  newEnrollments      Int
+  waitingListCount    Int
+  fullCategories      Int
+  availableSpots      Int
+  activeTeachers      Int
+  teacherAssignments  Int
+  teachersPerCategory Float
+  avgResponseTime     Float
+  errorRate           Float
+  totalRequests       Int
+  slowEndpoints       Json?
+  totalRevenue        Float
+  pendingRevenue      Float
+  collectedRevenue    Float
+  uniformSales        Float
+  eventRegistrations  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([date])
+  @@map("business_metrics")
+}
+
+model SecurityAudit {
+  id          String   @id @default(cuid())
+  eventType   String
+  userId      String?
+  userEmail   String?
+  userRole    String?
+  description String
+  ipAddress   String
+  userAgent   String
+  location    String?
+  deviceInfo  String?
+  action      String
+  resourceType String
+  resourceId  String?
+  oldValue    Json?
+  newValue    Json?
+  success     Boolean
+  errorMessage String?
+  timestamp   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([eventType])
+  @@index([timestamp])
+  @@map("security_audits")
+}
+
+model PerformanceMetric {
+  id          String   @id @default(cuid())
+  endpoint    String
+  method      String
+  responseTime Float
+  statusCode  Int
+  requestSize Int?
+  responseSize Int?
+  dbQueryTime Float?
+  dbQueryCount Int?
+  cacheHit    Boolean?
+  userId      String?
+  timestamp   DateTime @default(now())
+  
+  @@index([endpoint])
+  @@index([timestamp])
+  @@index([responseTime])
+  @@map("performance_metrics")
+}
+
+model UserActionLog {
+  id          String   @id @default(cuid())
+  userId      String
+  userEmail   String
+  userRole    String
+  actionType  String
+  description String
+  entityType  String
+  entityId    String
+  ipAddress   String
+  userAgent   String
+  sessionId   String?
+  data        Json?
+  timestamp   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([actionType])
+  @@index([timestamp])
+  @@index([entityType, entityId])
+  @@map("user_action_logs")
+}
+
+// ============================================
+// MODELOS AUXILIARES
+// ============================================
+
+model UserCategory {
+  id         String     @id @default(cuid())
+  userId     String
+  categoryId String
+  status     UserStatus @default(ACTIVE)
+  enrolledAt DateTime  @default(now())
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, categoryId])
+  @@index([userId])
+  @@index([categoryId])
+  @@map("user_categories")
+}
+
+model PaymentLog {
+  id        String   @id @default(cuid())
+  paymentId String
+  action    String
+  status    PaymentStatus
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  
+  @@index([paymentId])
+  @@index([createdAt])
+  @@map("payment_logs")
+}
+
+model PriceHistory {
+  id         String   @id @default(cuid())
+  categoryId String
+  oldPrice   Float
+  newPrice   Float
+  changedBy  String
+  reason     String?
+  createdAt  DateTime @default(now())
+  
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@index([categoryId])
+  @@index([createdAt])
+  @@map("price_history")
+}
+
+model DailyMetrics {
+  id          String   @id @default(cuid())
+  date        DateTime @unique
+  totalUsers  Int
+  totalPayments Float
+  totalShifts  Int
+  totalAttendance Int
+  newUsers     Int
+  cancelledReservations Int
+  createdAt   DateTime @default(now())
+  
+  @@index([date])
+  @@map("daily_metrics")
+}
+
+model Coupon {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  description    String?
+  discountType   String
+  discountValue  Float
+  minPurchase    Float?
+  maxDiscount    Float?
+  usageLimit     Int?
+  usedCount      Int      @default(0)
+  validFrom      DateTime
+  validUntil     DateTime
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([code])
+  @@index([validFrom, validUntil])
+  @@map("coupons")
+}
