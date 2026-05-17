@@ -1,3 +1,4 @@
+// lib/axios.ts
 import axios from 'axios';
 import { getSession } from 'next-auth/react';
 
@@ -11,16 +12,23 @@ const api = axios.create({
 
 // Request interceptor - añade token automáticamente
 api.interceptors.request.use(async (config) => {
-  const session = await getSession();
-  if (session?.user?.accessToken) {
-    config.headers.Authorization = `Bearer ${session.user.accessToken}`;
+  try {
+    const session = await getSession();
+    if (session?.user?.accessToken) {
+      config.headers.Authorization = `Bearer ${session.user.accessToken}`;
+    }
+  } catch (error) {
+    console.error('Error getting session:', error);
   }
   return config;
 });
 
-// Response interceptor - maneja errores
+// Response interceptor - maneja la respuesta
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    // Devolvemos response.data directamente para facilitar el uso
+    return response.data;
+  },
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {

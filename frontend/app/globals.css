@@ -1,35 +1,52 @@
 /* app/globals.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    /* Colores del club */
-    --club-red: #7c0613;
-    --club-red-dark: #4a030b;
-    --club-red-light: #9e1a2a;
-  }
-
-  body {
-    @apply bg-gray-50 dark:bg-gray-900;
-  }
+@theme {
+  /* Colores personalizados del club */
+  --color-club: #7c0613;
+  --color-club-dark: #4a030b;
+  --color-club-light: #9e1a2a;
+  
+  /* Colores base */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  
+  --color-white: #ffffff;
+  --color-black: #000000;
 }
 
 @layer components {
   .btn-club {
-    @apply bg-gradient-to-r from-[#7c0613] to-[#4a030b] text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:from-[#8e0716] hover:to-[#5c040e] disabled:opacity-50;
+    background: linear-gradient(135deg, var(--color-club) 0%, var(--color-club-dark) 100%);
+    color: white;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
   }
   
-  .btn-club-outline {
-    @apply border-2 border-[#7c0613] text-[#7c0613] font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:bg-[#7c0613] hover:text-white;
+  .btn-club:hover {
+    opacity: 0.9;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
-
+  
   .card-club {
-    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow;
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--color-gray-200);
   }
   
-  .gradient-text {
-    @apply bg-gradient-to-r from-[#7c0613] to-[#4a030b] bg-clip-text text-transparent;
+  .dark .card-club {
+    background-color: var(--color-gray-800);
+    border-color: var(--color-gray-700);
   }
 }
