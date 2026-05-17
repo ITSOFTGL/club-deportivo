@@ -1,26 +1,35 @@
-@import "tailwindcss";
+/* app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Colores del club */
+    --club-red: #7c0613;
+    --club-red-dark: #4a030b;
+    --club-red-light: #9e1a2a;
+  }
+
+  body {
+    @apply bg-gray-50 dark:bg-gray-900;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .btn-club {
+    @apply bg-gradient-to-r from-[#7c0613] to-[#4a030b] text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:from-[#8e0716] hover:to-[#5c040e] disabled:opacity-50;
+  }
+  
+  .btn-club-outline {
+    @apply border-2 border-[#7c0613] text-[#7c0613] font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:bg-[#7c0613] hover:text-white;
+  }
+
+  .card-club {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-[#7c0613] to-[#4a030b] bg-clip-text text-transparent;
+  }
 }
