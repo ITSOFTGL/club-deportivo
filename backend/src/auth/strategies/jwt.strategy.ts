@@ -1,3 +1,4 @@
+// backend/src/auth/strategies/jwt.strategy.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { UserStatus } from '@prisma/client';
@@ -24,15 +25,39 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: AccessTokenPayload): Promise<AuthUser> {
-    console.log('🔍 JWT Strategy - payload recibido:', payload);  // Depuración
+    console.log('🔍 JWT Strategy - payload recibido:', payload);
+    
+    if (!payload || !payload.sub) {
+      console.error('❌ Payload inválido o sin sub');
+      throw new UnauthorizedException('Token inválido');
+    }
     
     const user = await this.prismaService.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, status: true },
+      select: { id: true, email: true, role: true, status: true, name: true, lastName: true },
     });
-    if (!user || user.status !== UserStatus.ACTIVE) {
+    
+    console.log('👤 Usuario encontrado en BD:', user);
+    
+    if (!user) {
+      console.error('❌ Usuario no encontrado en BD');
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+    
+    if (user.status !== UserStatus.ACTIVE) {
+      console.error('❌ Usuario inactivo:', user.status);
       throw new UnauthorizedException('Sesión inválida o usuario inactivo');
     }
-    return { id: user.id, email: user.email, role: user.role };
+    
+    const authUser: AuthUser = { 
+      id: user.id, 
+      email: user.email, 
+      role: user.role,
+      name: user.name,
+      lastName: user.lastName,
+    };
+    
+    console.log('✅ AuthUser retornado:', authUser);
+    return authUser;
   }
 }

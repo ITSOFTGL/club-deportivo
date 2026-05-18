@@ -1,3 +1,4 @@
+// backend/src/users/users.controller.ts
 import {
   Body,
   Controller,
@@ -6,11 +7,14 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   AdminResetPasswordDto,
   ChangeRoleDto,
@@ -19,23 +23,23 @@ import {
   UpdateUserStatusDto,
 } from './dto/user.dto';
 import { UsersService } from './users.service';
-// 🔥 Agrega estas importaciones
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
-// 🔥 Agrega el decorador ApiTags a la clase
 @ApiTags('users')
 @ApiBearerAuth()
 @Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)  // ← AGREGAR ESTO
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get()
-  // 🔥 Agrega estos decoradores al método
   @ApiOperation({ summary: 'Obtener todos los usuarios', description: 'Lista todos los usuarios (solo administradores)' })
   @ApiResponse({ status: 200, description: 'Lista de usuarios obtenida exitosamente' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   findAll(@CurrentUser() actor: AuthUser) {
+    console.log('📝 Usuario en findAll:', actor); // ← Agregar log temporal
+    console.log('📝 Role:', actor?.role); // ← Agregar log temporal
     return this.users.findAll(actor);
   }
 
@@ -52,6 +56,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Crear un nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
   create(@Body() dto: CreateUserDto, @CurrentUser() actor: AuthUser) {
+    console.log('📝 Creando usuario, actor:', actor); // ← Agregar log temporal
     return this.users.create(dto, actor);
   }
 

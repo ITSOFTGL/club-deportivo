@@ -5,6 +5,8 @@ export type AuthUser = {
   id: string;
   email: string;
   role: UserRole;
+  name?: string;      // 
+  lastName?: string;  // 
 };
 
 export const CurrentUser = createParamDecorator(

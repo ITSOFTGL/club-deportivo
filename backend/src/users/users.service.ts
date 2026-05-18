@@ -184,6 +184,7 @@ export class UsersService {
       UserRole.SUPER_ADMIN,
       UserRole.ADMIN,
     ];
+    
     if (!staff.includes(actor.role)) {
       throw new ForbiddenException('Sin permisos de administración');
     }
