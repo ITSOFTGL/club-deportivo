@@ -5,11 +5,15 @@ export interface Category {
   id: string;
   name: string;
   description?: string;
+  type?: string;
+  monthlyPrice: number;
+  maxCapacity?: number;
   minAge?: number;
   maxAge?: number;
+  requiresEquipment?: boolean;
   branchId: string;
   branchName?: string;
-  status?: 'ACTIVE' | 'INACTIVE';
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -17,29 +21,24 @@ export interface Category {
 export interface CreateCategoryDto {
   name: string;
   description?: string;
+  type?: string;
+  monthlyPrice: number;
+  maxCapacity?: number;
   minAge?: number;
   maxAge?: number;
+  requiresEquipment?: boolean;
   branchId: string;
 }
 
 export interface UpdateCategoryDto extends Partial<CreateCategoryDto> {
-  status?: 'ACTIVE' | 'INACTIVE';
+  isActive?: boolean;
 }
 
 const categoriesApi = {
-  // Obtener todas las categorías
   getAll: (): Promise<Category[]> => api.get('/categories'),
-  
-  // Obtener una categoría por ID
   getById: (id: string): Promise<Category> => api.get(`/categories/${id}`),
-  
-  // Crear categoría
   create: (data: CreateCategoryDto): Promise<Category> => api.post('/categories', data),
-  
-  // Actualizar categoría
   update: (id: string, data: UpdateCategoryDto): Promise<Category> => api.patch(`/categories/${id}`, data),
-  
-  // Eliminar categoría (soft delete)
   delete: (id: string): Promise<void> => api.delete(`/categories/${id}`),
 };
 

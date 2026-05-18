@@ -9,7 +9,8 @@ import {
   TrashIcon,
   AcademicCapIcon,
   BuildingOfficeIcon,
-  CalendarIcon
+  CalendarIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 import { useCategoriesStore } from '@/store/categoriesStore';
 import { useBranchesStore } from '@/store/branchesStore';
@@ -51,10 +52,11 @@ export default function CategoriesPage() {
     );
   });
 
+  // CORREGIDO: usar isActive en lugar de status
   const stats = [
     { label: 'Total Categorías', value: categories.length, icon: AcademicCapIcon, color: 'from-blue-500 to-blue-600' },
-    { label: 'Activas', value: categories.filter((c: Category) => c.status === 'ACTIVE' || !c.status).length, icon: AcademicCapIcon, color: 'from-green-500 to-green-600' },
-    { label: 'Inactivas', value: categories.filter((c: Category) => c.status === 'INACTIVE').length, icon: AcademicCapIcon, color: 'from-red-500 to-red-600' },
+    { label: 'Activas', value: categories.filter((c: Category) => c.isActive === true || c.isActive === undefined).length, icon: AcademicCapIcon, color: 'from-green-500 to-green-600' },
+    { label: 'Inactivas', value: categories.filter((c: Category) => c.isActive === false).length, icon: AcademicCapIcon, color: 'from-red-500 to-red-600' },
   ];
 
   const handleSubmit = async (data: CreateCategoryDto) => {
@@ -97,6 +99,11 @@ export default function CategoriesPage() {
   const getBranchName = (branchId: string) => {
     const branch = branches.find((b: Branch) => b.id === branchId);
     return branch?.name || 'No asignada';
+  };
+
+  // Formatear precio
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(price);
   };
 
   return (
@@ -158,6 +165,7 @@ export default function CategoriesPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rango de Edad</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -169,6 +177,7 @@ export default function CategoriesPage() {
                   <tr key={i}>
                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32 animate-pulse" /></td>
                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24 animate-pulse" /></td>
+                    <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20 animate-pulse" /></td>
                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-28 animate-pulse" /></td>
                     <td className="px-6 py-4 text-center"><div className="h-5 bg-gray-200 rounded w-16 mx-auto animate-pulse" /></td>
                     <td className="px-6 py-4"><div className="h-8 bg-gray-200 rounded w-16 ml-auto animate-pulse" /></td>
@@ -176,7 +185,7 @@ export default function CategoriesPage() {
                 ))
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <AcademicCapIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     {searchTerm ? 'No se encontraron categorías' : 'No hay categorías registradas'}
                   </td>
@@ -203,7 +212,7 @@ export default function CategoriesPage() {
                             )}
                           </div>
                         </div>
-                      </td>
+                       </td>
                       <td className="px-6 py-4">
                         {category.minAge || category.maxAge ? (
                           <p className="text-sm text-gray-600 flex items-center">
@@ -222,17 +231,23 @@ export default function CategoriesPage() {
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-gray-600 flex items-center">
+                          <CurrencyDollarIcon className="w-4 h-4 mr-1 text-gray-400" />
+                          {formatPrice(category.monthlyPrice || 0)}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-600 flex items-center">
                           <BuildingOfficeIcon className="w-4 h-4 mr-1 text-gray-400" />
                           {getBranchName(category.branchId)}
                         </p>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          category.status === 'ACTIVE' || !category.status
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                          category.isActive === true || category.isActive === undefined
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                         }`}>
-                          {category.status === 'ACTIVE' || !category.status ? 'Activa' : 'Inactiva'}
+                          {category.isActive === true || category.isActive === undefined ? 'Activa' : 'Inactiva'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">

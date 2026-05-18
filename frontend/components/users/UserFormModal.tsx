@@ -1,10 +1,10 @@
-// components/users/UserFormModal.tsx
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { User, CreateUserDto } from '@/lib/api/users';
+import toast from 'react-hot-toast';
 
 const roles = [
   { value: 'SUPER_ADMIN', label: 'Super Administrador', color: 'bg-purple-600' },
@@ -15,16 +15,16 @@ const roles = [
 ];
 
 const genders = [
-  { value: 'MALE', label: 'Masculino' },
-  { value: 'FEMALE', label: 'Femenino' },
-  { value: 'OTHER', label: 'Otro' },
+  { value: 'MASCULINO', label: 'Masculino' },
+  { value: 'FEMENINO', label: 'Femenino' },
+  { value: 'OTRO', label: 'Otro' },
 ];
 
 interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   user?: User | null;
-  onSubmit: (data: CreateUserDto) => Promise<boolean>;
+  onSubmit: (data: any) => Promise<boolean>;
   loading?: boolean;
 }
 
@@ -35,7 +35,7 @@ export function UserFormModal({
   onSubmit,
   loading = false,
 }: UserFormModalProps) {
-  const [formData, setFormData] = useState<CreateUserDto>({
+  const [formData, setFormData] = useState<any>({
     email: '',
     password: '',
     name: '',
@@ -44,7 +44,7 @@ export function UserFormModal({
     phone: '',
     address: '',
     birthDate: '',
-    gender: undefined,
+    gender: '',
     role: 'PARENT',
   });
 
@@ -59,7 +59,7 @@ export function UserFormModal({
         phone: user.phone || '',
         address: user.address || '',
         birthDate: user.birthDate ? user.birthDate.split('T')[0] : '',
-        gender: user.gender,
+        gender: user.gender || '',
         role: user.role || 'PARENT',
       });
     } else {
@@ -72,7 +72,7 @@ export function UserFormModal({
         phone: '',
         address: '',
         birthDate: '',
-        gender: undefined,
+        gender: '',
         role: 'PARENT',
       });
     }
@@ -80,7 +80,53 @@ export function UserFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await onSubmit(formData);
+    
+    // Datos base obligatorios
+    const dataToSend: any = {
+      email: formData.email,
+      name: formData.name,
+      lastName: formData.lastName,
+      role: formData.role,
+    };
+    
+    // Agregar campos opcionales solo si tienen valor
+    if (formData.documentId && formData.documentId.trim() !== '') {
+      dataToSend.documentId = formData.documentId;
+    }
+    if (formData.phone && formData.phone.trim() !== '') {
+      dataToSend.phone = formData.phone;
+    }
+    if (formData.address && formData.address.trim() !== '') {
+      dataToSend.address = formData.address;
+    }
+    if (formData.birthDate && formData.birthDate.trim() !== '') {
+      dataToSend.birthDate = formData.birthDate;
+    }
+    if (formData.gender && formData.gender.trim() !== '') {
+      dataToSend.gender = formData.gender;
+    }
+    
+    // Solo enviar contraseña si:
+    // 1. Es un usuario NUEVO (obligatorio)
+    // 2. Es un usuario EXISTENTE y se ingresó una nueva contraseña (opcional)
+    if (!user) {
+      // Nuevo usuario - contraseña obligatoria
+      if (!formData.password || formData.password.length < 6) {
+        toast.error('La contraseña debe tener al menos 6 caracteres');
+        return;
+      }
+      dataToSend.password = formData.password;
+    } else if (formData.password && formData.password.trim() !== '') {
+      // Usuario existente - solo enviar si se ingresó una nueva
+      if (formData.password.length < 6) {
+        toast.error('La contraseña debe tener al menos 6 caracteres');
+        return;
+      }
+      dataToSend.password = formData.password;
+    }
+    
+    console.log('📤 Enviando usuario:', dataToSend);
+    const success = await onSubmit(dataToSend);
     if (success) {
       onClose();
     }
@@ -146,13 +192,14 @@ export function UserFormModal({
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Apellido
+                        Apellido *
                       </label>
                       <input
                         type="text"
                         value={formData.lastName}
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
+                        required
                       />
                     </div>
                   </div>
@@ -170,21 +217,23 @@ export function UserFormModal({
                         required
                       />
                     </div>
-                    {!user && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Contraseña *
-                        </label>
-                        <input
-                          type="password"
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
-                          required={!user}
-                          placeholder="Mínimo 6 caracteres"
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Contraseña {!user && '*'}
+                      </label>
+                      <input
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
+                        placeholder={user ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres'}
+                      />
+                      {user && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Dejar vacío para mantener la contraseña actual
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -244,12 +293,14 @@ export function UserFormModal({
                       </label>
                       <select
                         value={formData.gender}
-                        onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
+                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
                       >
                         <option value="">Seleccionar</option>
                         {genders.map((g) => (
-                          <option key={g.value} value={g.value}>{g.label}</option>
+                          <option key={g.value} value={g.value}>
+                            {g.label}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -259,12 +310,14 @@ export function UserFormModal({
                       </label>
                       <select
                         value={formData.role}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
                         required
                       >
                         {roles.map((r) => (
-                          <option key={r.value} value={r.value}>{r.label}</option>
+                          <option key={r.value} value={r.value}>
+                            {r.label}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -275,7 +328,7 @@ export function UserFormModal({
                       type="button"
                       onClick={onClose}
                       disabled={loading}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
                     >
                       Cancelar
                     </button>

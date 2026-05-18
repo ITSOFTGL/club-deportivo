@@ -1,4 +1,4 @@
-// store/categoriesStore.ts
+// store/categoriesStore.ts - Asegurar que use CreateCategoryDto
 import { create } from 'zustand';
 import { Category, CreateCategoryDto, UpdateCategoryDto } from '@/lib/api/categories';
 import categoriesApi from '@/lib/api/categories';

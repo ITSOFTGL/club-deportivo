@@ -3,13 +3,25 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, AcademicCapIcon, CurrencyDollarIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { Category, CreateCategoryDto } from '@/lib/api/categories';
 
 interface Branch {
   id: string;
   name: string;
 }
+
+const categoryTypes = [
+  { value: 'SPORT', label: 'Deporte' },
+  { value: 'FITNESS', label: 'Fitness' },
+  { value: 'POOL', label: 'Piscina' },
+  { value: 'TENNIS', label: 'Tenis' },
+  { value: 'FOOTBALL', label: 'Fútbol' },
+  { value: 'BASKETBALL', label: 'Básquetbol' },
+  { value: 'SWIMMING', label: 'Natación' },
+  { value: 'YOGA', label: 'Yoga' },
+  { value: 'CROSSFIT', label: 'Crossfit' },
+];
 
 interface CategoryFormModalProps {
   isOpen: boolean;
@@ -31,8 +43,12 @@ export function CategoryFormModal({
   const [formData, setFormData] = useState<CreateCategoryDto>({
     name: '',
     description: '',
+    type: 'SPORT',
+    monthlyPrice: 0,
+    maxCapacity: 20,
     minAge: undefined,
     maxAge: undefined,
+    requiresEquipment: false,
     branchId: '',
   });
 
@@ -41,16 +57,24 @@ export function CategoryFormModal({
       setFormData({
         name: category.name || '',
         description: category.description || '',
+        type: category.type || 'SPORT',
+        monthlyPrice: category.monthlyPrice || 0,
+        maxCapacity: category.maxCapacity || 20,
         minAge: category.minAge,
         maxAge: category.maxAge,
+        requiresEquipment: category.requiresEquipment || false,
         branchId: category.branchId || '',
       });
     } else {
       setFormData({
         name: '',
         description: '',
+        type: 'SPORT',
+        monthlyPrice: 0,
+        maxCapacity: 20,
         minAge: undefined,
         maxAge: undefined,
+        requiresEquipment: false,
         branchId: '',
       });
     }
@@ -109,6 +133,7 @@ export function CategoryFormModal({
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Nombre */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Nombre de la Categoría *
@@ -123,6 +148,7 @@ export function CategoryFormModal({
                     />
                   </div>
 
+                  {/* Descripción */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Descripción
@@ -131,11 +157,72 @@ export function CategoryFormModal({
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
-                      rows={3}
+                      rows={2}
                       placeholder="Descripción de la categoría"
                     />
                   </div>
 
+                  {/* Tipo de Categoría */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Tipo de Categoría
+                    </label>
+                    <select
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                    >
+                      {categoryTypes.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Precio Mensual */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Precio Mensual (Bs.) *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.monthlyPrice}
+                        onChange={(e) => setFormData({ ...formData, monthlyPrice: parseFloat(e.target.value) || 0 })}
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                        required
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Capacidad Máxima */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Capacidad Máxima
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <UsersIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.maxCapacity || ''}
+                        onChange={(e) => setFormData({ ...formData, maxCapacity: e.target.value ? parseInt(e.target.value) : undefined })}
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                        placeholder="20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Rango de Edad */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -143,6 +230,7 @@ export function CategoryFormModal({
                       </label>
                       <input
                         type="number"
+                        min="0"
                         value={formData.minAge || ''}
                         onChange={(e) => setFormData({ ...formData, minAge: e.target.value ? parseInt(e.target.value) : undefined })}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
@@ -155,6 +243,7 @@ export function CategoryFormModal({
                       </label>
                       <input
                         type="number"
+                        min="0"
                         value={formData.maxAge || ''}
                         onChange={(e) => setFormData({ ...formData, maxAge: e.target.value ? parseInt(e.target.value) : undefined })}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
@@ -163,6 +252,21 @@ export function CategoryFormModal({
                     </div>
                   </div>
 
+                  {/* Requiere Equipo */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="requiresEquipment"
+                      checked={formData.requiresEquipment}
+                      onChange={(e) => setFormData({ ...formData, requiresEquipment: e.target.checked })}
+                      className="w-4 h-4 text-[#7c0613] focus:ring-[#7c0613] border-gray-300 rounded"
+                    />
+                    <label htmlFor="requiresEquipment" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Requiere equipo especial
+                    </label>
+                  </div>
+
+                  {/* Sucursal */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Sucursal *

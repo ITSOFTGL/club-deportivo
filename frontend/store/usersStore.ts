@@ -28,21 +28,26 @@ export const useUsersStore = create<UsersState>((set, get) => ({
   setSearchTerm: (term) => set({ searchTerm: term }),
 
   fetchUsers: async () => {
+    console.log('🔄 Cargando usuarios...');
     set({ loading: true, error: null });
     try {
       const data = await usersApi.getAll();
+      console.log('📥 Usuarios recibidos:', data);
       set({ users: Array.isArray(data) ? data : [], loading: false });
     } catch (error: any) {
-      console.error('Error fetching users:', error);
+      console.error('❌ Error fetching users:', error);
+      console.error('❌ Response:', error.response?.data);
       set({ error: error.message, users: [], loading: false });
       toast.error('Error al cargar usuarios');
     }
   },
 
   createUser: async (data) => {
+    console.log('📤 Creando usuario:', data);
     set({ loading: true });
     try {
       const newUser = await usersApi.create(data);
+      console.log('✅ Usuario creado:', newUser);
       set((state) => ({
         users: [newUser, ...state.users],
         loading: false,
@@ -50,17 +55,37 @@ export const useUsersStore = create<UsersState>((set, get) => ({
       toast.success('Usuario creado exitosamente');
       return true;
     } catch (error: any) {
-      console.error('Error creating user:', error);
-      toast.error(error?.message || 'Error al crear usuario');
+      console.error('❌ Error creating user:', error);
+      console.error('❌ Response:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Error al crear usuario');
       set({ loading: false });
       return false;
     }
   },
 
   updateUser: async (id, data) => {
+    console.log('📤 Actualizando usuario:', { id, data });
     set({ loading: true });
     try {
-      const updatedUser = await usersApi.update(id, data);
+      // Crear objeto con solo los campos que tienen valor (no undefined)
+      const cleanData: UpdateUserDto = {};
+      
+      // Usar hasOwnProperty para verificar campos presentes
+      if (data.email !== undefined) cleanData.email = data.email;
+      if (data.name !== undefined) cleanData.name = data.name;
+      if (data.lastName !== undefined) cleanData.lastName = data.lastName;
+      if (data.role !== undefined) cleanData.role = data.role;
+      if (data.documentId !== undefined) cleanData.documentId = data.documentId;
+      if (data.phone !== undefined) cleanData.phone = data.phone;
+      if (data.address !== undefined) cleanData.address = data.address;
+      if (data.birthDate !== undefined) cleanData.birthDate = data.birthDate;
+      if (data.gender !== undefined) cleanData.gender = data.gender;
+      if (data.password !== undefined && data.password !== '') cleanData.password = data.password;
+      
+      console.log('📤 Enviando actualización:', cleanData);
+      const updatedUser = await usersApi.update(id, cleanData);
+      console.log('✅ Usuario actualizado:', updatedUser);
+      
       set((state) => ({
         users: state.users.map((u) => (u.id === id ? updatedUser : u)),
         loading: false,
@@ -68,8 +93,9 @@ export const useUsersStore = create<UsersState>((set, get) => ({
       toast.success('Usuario actualizado exitosamente');
       return true;
     } catch (error: any) {
-      console.error('Error updating user:', error);
-      toast.error(error?.message || 'Error al actualizar usuario');
+      console.error('❌ Error updating user:', error);
+      console.error('❌ Response:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Error al actualizar usuario');
       set({ loading: false });
       return false;
     }
