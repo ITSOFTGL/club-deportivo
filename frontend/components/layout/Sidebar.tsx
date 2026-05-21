@@ -21,7 +21,8 @@ import {
   ClockIcon,
   UserGroupIcon,
   DocumentTextIcon,
-  QrCodeIcon
+  QrCodeIcon,
+  ShieldCheckIcon  // ← Para Apoderados
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -35,6 +36,7 @@ const menuItems: Record<string, any[]> = {
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Sucursales', href: '/dashboard/branches', icon: BuildingOfficeIcon },
     { name: 'Usuarios', href: '/dashboard/users', icon: UsersIcon },
+    { name: 'Apoderados', href: '/dashboard/guardians', icon: ShieldCheckIcon },  // ← NUEVO
     { name: 'Turnos', href: '/dashboard/shifts', icon: ClockIcon },
     { name: 'Categorías', href: '/dashboard/categories', icon: AcademicCapIcon },
     { name: 'Asignaciones', href: '/dashboard/assignments', icon: UserGroupIcon },
@@ -49,6 +51,7 @@ const menuItems: Record<string, any[]> = {
   ADMIN: [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Sucursales', href: '/dashboard/branches', icon: BuildingOfficeIcon },
+    { name: 'Apoderados', href: '/dashboard/guardians', icon: ShieldCheckIcon },  // ← NUEVO
     { name: 'Alumnos', href: '/dashboard/students', icon: UsersIcon },
     { name: 'Asistencias', href: '/dashboard/attendances', icon: DocumentTextIcon },
     { name: 'Pagos', href: '/dashboard/payments', icon: CreditCardIcon },
@@ -58,6 +61,7 @@ const menuItems: Record<string, any[]> = {
   ],
   TEACHER: [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+    { name: 'Apoderados', href: '/dashboard/guardians', icon: ShieldCheckIcon },  // ← NUEVO
     { name: 'Mis Alumnos', href: '/dashboard/my-students', icon: UsersIcon },
     { name: 'Asistencias', href: '/dashboard/attendances', icon: DocumentTextIcon },
     { name: 'Eventos', href: '/dashboard/events', icon: CalendarIcon },
