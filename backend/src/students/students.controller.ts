@@ -1,55 +1,50 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+// backend/src/students/students.controller.ts
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
-@ApiTags('students')
-@ApiBearerAuth()
 @Controller('students')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PARENT)
-  @ApiOperation({ summary: 'Crear un nuevo alumno' })
   create(@Body() createStudentDto: CreateStudentDto, @CurrentUser() actor: AuthUser) {
     return this.studentsService.create(createStudentDto);
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT)
   @Get()
-  @ApiOperation({ summary: 'Obtener todos los alumnos' })
-  findAll(@Query('parentId') parentId?: string) {
-    if (parentId) {
-      return this.studentsService.findByParent(parentId);
+  findAll(@CurrentUser() actor: AuthUser) {
+    if (actor.role === UserRole.PARENT) {
+      return this.studentsService.findByParent(actor.id);
     }
     return this.studentsService.findAll();
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT)
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener un alumno por ID' })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string, @CurrentUser() actor: AuthUser) {
     return this.studentsService.findOne(id);
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PARENT)
-  @ApiOperation({ summary: 'Actualizar un alumno' })
-  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
+  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto, @CurrentUser() actor: AuthUser) {
     return this.studentsService.update(id, updateStudentDto);
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  @ApiOperation({ summary: 'Eliminar (soft delete) un alumno' })
-  remove(@Param('id') id: string) {
+  remove(@Param('id') id: string, @CurrentUser() actor: AuthUser) {
     return this.studentsService.remove(id);
   }
 }
