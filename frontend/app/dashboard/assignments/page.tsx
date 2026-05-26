@@ -15,8 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useTeacherAssignmentsStore } from '@/store/teacherAssignmentsStore';
 import { useUsersStore } from '@/store/usersStore';
-import { useCategoriesStore } from '@/store/categoriesStore';
-import { useShiftsStore } from '@/store/shiftsStore';
+import categoryShiftsApi, { CategoryShift } from '@/lib/api/category-shifts';
 import { TeacherAssignmentFormModal } from '@/components/teacher-assignments/TeacherAssignmentFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { CreateTeacherAssignmentDto } from '@/lib/api/teacher-assignments';
@@ -29,18 +28,10 @@ interface Teacher {
   email: string;
 }
 
-interface CategoryShift {
-  id: string;
-  name: string;
-  category?: { name: string };
-  shift?: { name: string };
-}
-
 export default function AssignmentsPage() {
   const { assignments, loading, searchTerm, setSearchTerm, fetchAssignments, createAssignment, updateAssignment, deleteAssignment } = useTeacherAssignmentsStore();
   const { users, fetchUsers } = useUsersStore();
-  const { categories, fetchCategories } = useCategoriesStore();
-  const { shifts, fetchShifts } = useShiftsStore();
+  const [categoryShifts, setCategoryShifts] = useState<CategoryShift[]>([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
@@ -51,11 +42,11 @@ export default function AssignmentsPage() {
   useEffect(() => {
     fetchAssignments();
     fetchUsers();
-    fetchCategories();
-    fetchShifts();
+    categoryShiftsApi.getAll().then((data) => {
+      setCategoryShifts(Array.isArray(data) ? data : []);
+    }).catch(() => setCategoryShifts([]));
   }, []);
 
-  // Filtrar solo profesores y mapear al tipo Teacher
   const teachers: Teacher[] = users
     .filter(u => u.role === 'TEACHER')
     .map(u => ({
@@ -64,16 +55,6 @@ export default function AssignmentsPage() {
       lastName: u.lastName || '',
       email: u.email,
     }));
-
-  // Crear categoryShifts
-  const categoryShifts: CategoryShift[] = categories.flatMap(category => 
-    shifts.map(shift => ({
-      id: `${category.id}-${shift.id}`,
-      name: `${category.name} - ${shift.name}`,
-      category: { name: category.name },
-      shift: { name: shift.name }
-    }))
-  );
 
   const filteredAssignments = assignments.filter((assignment) => {
     const search = searchTerm.toLowerCase();
@@ -244,7 +225,9 @@ export default function AssignmentsPage() {
                         <div className="flex items-center space-x-2">
                           <AcademicCapIcon className="w-4 h-4 text-gray-400" />
                           <span className="text-sm text-gray-600">
-                            {assignment.categoryShift?.name || 'N/A'}
+                            {assignment.categoryShift?.category?.name
+                              ? `${assignment.categoryShift.category.name} — ${assignment.categoryShift.shift?.name ?? assignment.categoryShift.name}`
+                              : assignment.categoryShift?.name || 'N/A'}
                           </span>
                         </div>
                       </td>

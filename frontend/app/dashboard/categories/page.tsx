@@ -1,3 +1,4 @@
+// app/dashboard/categories/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,10 +11,12 @@ import {
   AcademicCapIcon,
   BuildingOfficeIcon,
   CalendarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import { useCategoriesStore } from '@/store/categoriesStore';
 import { useBranchesStore } from '@/store/branchesStore';
+import { useShiftsStore } from '@/store/shiftsStore';
 import { CategoryFormModal } from '@/components/categories/CategoryFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { Category, CreateCategoryDto } from '@/lib/api/categories';
@@ -32,6 +35,7 @@ export default function CategoriesPage() {
   } = useCategoriesStore();
 
   const { branches, fetchBranches } = useBranchesStore();
+  const { shifts, fetchShifts } = useShiftsStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
@@ -41,6 +45,7 @@ export default function CategoriesPage() {
   useEffect(() => {
     fetchCategories();
     fetchBranches();
+    fetchShifts();
   }, []);
 
   const filteredCategories = categories.filter((category: Category) => {
@@ -48,15 +53,14 @@ export default function CategoriesPage() {
     return (
       category.name?.toLowerCase().includes(search) ||
       category.description?.toLowerCase().includes(search) ||
-      category.branchName?.toLowerCase().includes(search)
+      category.branch?.name?.toLowerCase().includes(search)
     );
   });
 
-  // CORREGIDO: usar isActive en lugar de status
   const stats = [
     { label: 'Total Categorías', value: categories.length, icon: AcademicCapIcon, color: 'from-blue-500 to-blue-600' },
-    { label: 'Activas', value: categories.filter((c: Category) => c.isActive === true || c.isActive === undefined).length, icon: AcademicCapIcon, color: 'from-green-500 to-green-600' },
-    { label: 'Inactivas', value: categories.filter((c: Category) => c.isActive === false).length, icon: AcademicCapIcon, color: 'from-red-500 to-red-600' },
+    { label: 'Activas', value: categories.filter((c: Category) => c.isActive !== false).length, icon: AcademicCapIcon, color: 'from-green-500 to-green-600' },
+    { label: 'Turnos Asignados', value: categories.reduce((acc, c) => acc + (c.shifts?.length || 0), 0), icon: ClockIcon, color: 'from-purple-500 to-purple-600' },
   ];
 
   const handleSubmit = async (data: CreateCategoryDto) => {
@@ -101,7 +105,6 @@ export default function CategoriesPage() {
     return branch?.name || 'No asignada';
   };
 
-  // Formatear precio
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(price);
   };
@@ -164,10 +167,10 @@ export default function CategoriesPage() {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Turnos</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rango de Edad</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
@@ -179,7 +182,6 @@ export default function CategoriesPage() {
                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24 animate-pulse" /></td>
                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20 animate-pulse" /></td>
                     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-28 animate-pulse" /></td>
-                    <td className="px-6 py-4 text-center"><div className="h-5 bg-gray-200 rounded w-16 mx-auto animate-pulse" /></td>
                     <td className="px-6 py-4"><div className="h-8 bg-gray-200 rounded w-16 ml-auto animate-pulse" /></td>
                   </tr>
                 ))
@@ -212,7 +214,25 @@ export default function CategoriesPage() {
                             )}
                           </div>
                         </div>
-                       </td>
+                      </td>
+                      <td className="px-6 py-4">
+                        {category.shifts && category.shifts.length > 0 ? (
+                          <div className="space-y-1">
+                            {category.shifts.map((cs) => (
+                              <div key={cs.shiftId} className="text-xs">
+                                <span className="font-medium text-gray-700">
+                                  {cs.shift?.name || 'Turno'}:
+                                </span>
+                                <span className="text-gray-500 ml-1">
+                                  {cs.capacity} cupos
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-400">Sin turnos asignados</p>
+                        )}
+                      </td>
                       <td className="px-6 py-4">
                         {category.minAge || category.maxAge ? (
                           <p className="text-sm text-gray-600 flex items-center">
@@ -240,15 +260,6 @@ export default function CategoriesPage() {
                           <BuildingOfficeIcon className="w-4 h-4 mr-1 text-gray-400" />
                           {getBranchName(category.branchId)}
                         </p>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          category.isActive === true || category.isActive === undefined
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                        }`}>
-                          {category.isActive === true || category.isActive === undefined ? 'Activa' : 'Inactiva'}
-                        </span>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button
@@ -283,6 +294,7 @@ export default function CategoriesPage() {
         }}
         category={editingCategory}
         branches={branches}
+        shifts={shifts}
         onSubmit={handleSubmit}
         loading={formLoading}
       />

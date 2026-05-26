@@ -161,11 +161,19 @@ export function TeacherAssignmentFormModal({
                       required
                     >
                       <option value="">Seleccionar categoría/turno</option>
-                      {categoryShifts.map((cs) => (
-                        <option key={cs.id} value={cs.id}>
-                          {getCategoryShiftName(cs.id)}
+                      {categoryShifts.length === 0 ? (
+                        <option value="" disabled>
+                          Primero asigna turnos en Categorías
                         </option>
-                      ))}
+                      ) : (
+                        categoryShifts.map((cs) => (
+                          <option key={cs.id} value={cs.id}>
+                            {cs.category?.name
+                              ? `${cs.category.name} — ${cs.shift?.name ?? cs.name}`
+                              : cs.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
 

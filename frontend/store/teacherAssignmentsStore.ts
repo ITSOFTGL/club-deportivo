@@ -39,11 +39,9 @@ export const useTeacherAssignmentsStore = create<TeacherAssignmentsState>((set, 
   createAssignment: async (data) => {
     set({ loading: true });
     try {
-      const newAssignment = await teacherAssignmentsApi.create(data);
-      set((state) => ({
-        assignments: [newAssignment, ...state.assignments],
-        loading: false,
-      }));
+      await teacherAssignmentsApi.create(data);
+      await get().fetchAssignments();
+      set({ loading: false });
       toast.success('Asignación creada exitosamente');
       return true;
     } catch (error: any) {

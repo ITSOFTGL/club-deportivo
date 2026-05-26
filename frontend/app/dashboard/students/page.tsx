@@ -205,6 +205,7 @@ export default function StudentsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apoderado</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mensualidad</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
@@ -224,7 +225,7 @@ export default function StudentsPage() {
                 ))
               ) : filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     <UserGroupIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     {searchTerm ? 'No se encontraron alumnos' : 'No hay alumnos registrados'}
                   </td>
@@ -276,7 +277,32 @@ export default function StudentsPage() {
                         <p className="text-sm text-gray-600 flex items-center">
                           <AcademicCapIcon className="w-4 h-4 mr-1 text-gray-400" />
                           {getCategoryName(student.categoryId)}
+                          {(student as { discountPercent?: number }).discountPercent
+                            ? ` (-${(student as { discountPercent?: number }).discountPercent}%)`
+                            : ''}
                         </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        {(student as { membershipPaidUntil?: string }).membershipPaidUntil ? (
+                          <span
+                            className={`text-xs font-medium px-2 py-1 rounded-full ${
+                              (student as { membershipActive?: boolean }).membershipActive
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {(student as { membershipActive?: boolean }).membershipActive
+                              ? 'Al día hasta '
+                              : 'Venció '}
+                            {formatDate(
+                              (student as { membershipPaidUntil: string }).membershipPaidUntil,
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
+                            Sin pago registrado
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

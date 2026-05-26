@@ -1,13 +1,11 @@
 // store/shiftsStore.ts
 import { create } from 'zustand';
-import { Shift, CreateShiftDto, UpdateShiftDto } from '@/lib/api/shifts';
-import shiftsApi from '@/lib/api/shifts';
+import shiftsApi, { Shift, CreateShiftDto, UpdateShiftDto } from '@/lib/api/shifts';
 import toast from 'react-hot-toast';
 
 interface ShiftsState {
   shifts: Shift[];
   loading: boolean;
-  error: string | null;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   fetchShifts: () => Promise<void>;
@@ -19,42 +17,37 @@ interface ShiftsState {
 export const useShiftsStore = create<ShiftsState>((set, get) => ({
   shifts: [],
   loading: false,
-  error: null,
   searchTerm: '',
 
   setSearchTerm: (term) => set({ searchTerm: term }),
 
   fetchShifts: async () => {
-    set({ loading: true, error: null });
+    set({ loading: true });
     try {
       const data = await shiftsApi.getAll();
       set({ shifts: Array.isArray(data) ? data : [], loading: false });
-    } catch (error: any) {
-      console.error('Error fetching shifts:', error);
-      set({ error: error.message, shifts: [], loading: false });
+    } catch {
       toast.error('Error al cargar turnos');
+      set({ shifts: [], loading: false });
     }
   },
 
-  createShift: async (data) => {
+  createShift: async (data: CreateShiftDto) => {
     set({ loading: true });
     try {
-      const newShift = await shiftsApi.create(data);
-      set((state) => ({
-        shifts: [newShift, ...state.shifts],
-        loading: false,
-      }));
+      await shiftsApi.create(data);
+      await get().fetchShifts();
       toast.success('Turno creado exitosamente');
       return true;
     } catch (error: any) {
       console.error('Error creating shift:', error);
-      toast.error(error?.message || 'Error al crear turno');
+      toast.error('Error al crear turno');
       set({ loading: false });
       return false;
     }
   },
 
-  updateShift: async (id, data) => {
+  updateShift: async (id: string, data: UpdateShiftDto) => {
     set({ loading: true });
     try {
       const updatedShift = await shiftsApi.update(id, data);
@@ -66,13 +59,13 @@ export const useShiftsStore = create<ShiftsState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error updating shift:', error);
-      toast.error(error?.message || 'Error al actualizar turno');
+      toast.error('Error al actualizar turno');
       set({ loading: false });
       return false;
     }
   },
 
-  deleteShift: async (id) => {
+  deleteShift: async (id: string) => {
     set({ loading: true });
     try {
       await shiftsApi.delete(id);
@@ -84,7 +77,7 @@ export const useShiftsStore = create<ShiftsState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error deleting shift:', error);
-      toast.error(error?.message || 'Error al eliminar turno');
+      toast.error('Error al eliminar turno');
       set({ loading: false });
       return false;
     }

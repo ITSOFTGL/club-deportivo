@@ -24,12 +24,15 @@ export interface Student {
   acefiDate?: string;
   acfDate?: string;
   status: 'ACTIVE' | 'INACTIVE';
+  discountPercent?: number;
+  membershipPaidUntil?: string | null;
+  membershipActive?: boolean;
   parentId: string;
   branchId: string;
   categoryId: string;
   parent?: { name: string; lastName: string; email: string };
   branch?: { name: string };
-  category?: { name: string };
+  category?: { name: string; monthlyPrice?: number };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -58,6 +61,7 @@ export interface CreateStudentDto {
   parentId: string;
   branchId: string;
   categoryId: string;
+  discountPercent?: number;
 }
 
 export interface UpdateStudentDto extends Partial<CreateStudentDto> {

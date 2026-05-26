@@ -43,6 +43,7 @@ interface Student {
   parentId: string;
   branchId: string;
   categoryId: string;
+  discountPercent?: number;
   status?: string;
 }
 
@@ -126,6 +127,7 @@ export function StudentFormModal({
     parentId: '',
     branchId: '',
     categoryId: '',
+    discountPercent: 0,
   });
 
   useEffect(() => {
@@ -150,6 +152,7 @@ export function StudentFormModal({
         parentId: student.parentId || '',
         branchId: student.branchId || '',
         categoryId: student.categoryId || '',
+        discountPercent: student.discountPercent ?? 0,
       });
     } else {
       setFormData({
@@ -172,6 +175,7 @@ export function StudentFormModal({
         parentId: '',
         branchId: '',
         categoryId: '',
+        discountPercent: 0,
       });
     }
   }, [student, isOpen]);
@@ -203,7 +207,11 @@ export function StudentFormModal({
     if (formData.emergencyPhone && formData.emergencyPhone.trim()) dataToSend.emergencyPhone = formData.emergencyPhone;
     if (formData.school && formData.school.trim()) dataToSend.school = formData.school;
     if (formData.grade && formData.grade.trim()) dataToSend.grade = formData.grade;
-    
+    if (formData.discountPercent !== '' && formData.discountPercent != null) {
+      (dataToSend as CreateStudentDto & { discountPercent?: number }).discountPercent =
+        Number(formData.discountPercent);
+    }
+
     console.log('📤 Enviando alumno:', dataToSend);
     const success = await onSubmit(dataToSend);
     if (success) {
@@ -498,15 +506,19 @@ export function StudentFormModal({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Apoderado *
+                          Padre/Madre (usuario del sistema) *
                         </label>
+                        <p className="text-xs text-amber-700 mb-2">
+                          Primero cree un usuario con rol <strong>Padre</strong> en Usuarios.
+                          Los contactos adicionales se agregan después en Apoderados.
+                        </p>
                         <select
                           value={formData.parentId}
                           onChange={(e) => updateField('parentId', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
                           required
                         >
-                          <option value="">Seleccionar apoderado</option>
+                          <option value="">Seleccionar cuenta padre/madre</option>
                           {parents.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.name} {p.lastName} - {p.email}
@@ -545,6 +557,26 @@ export function StudentFormModal({
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))}
                         </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Descuento mensualidad (%)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={formData.discountPercent}
+                          onChange={(e) =>
+                            updateField('discountPercent', e.target.value)
+                          }
+                          className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Se aplica sobre la cuota de la categoría al cobrar.
+                        </p>
                       </div>
                     </div>
                   </div>

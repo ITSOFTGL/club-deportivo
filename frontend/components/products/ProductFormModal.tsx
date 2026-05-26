@@ -60,6 +60,7 @@ export function ProductFormModal({
     customizationPrice: undefined,
     categoryId: '',
     branchId: '',
+    mainImage: '',
     isPopular: false,
   });
 
@@ -80,6 +81,7 @@ export function ProductFormModal({
         customizationPrice: product.customizationPrice,
         categoryId: product.categoryId || '',
         branchId: product.branchId || '',
+        mainImage: product.mainImage || '',
         isPopular: product.isPopular || false,
       });
     } else {
@@ -98,6 +100,7 @@ export function ProductFormModal({
         customizationPrice: undefined,
         categoryId: '',
         branchId: '',
+        mainImage: '',
         isPopular: false,
       });
     }
@@ -200,6 +203,21 @@ export function ProductFormModal({
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
+                      className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      URL de imagen
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.mainImage ?? ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, mainImage: e.target.value })
+                      }
+                      placeholder="https://ejemplo.com/imagen.jpg"
                       className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
                     />
                   </div>

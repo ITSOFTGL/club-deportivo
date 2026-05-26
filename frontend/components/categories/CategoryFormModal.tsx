@@ -3,8 +3,17 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { XMarkIcon, AcademicCapIcon, CurrencyDollarIcon, UsersIcon } from '@heroicons/react/24/outline';
-import { Category, CreateCategoryDto } from '@/lib/api/categories';
+import { 
+  XMarkIcon, 
+  AcademicCapIcon, 
+  CurrencyDollarIcon, 
+  UsersIcon,
+  ClockIcon,
+  BuildingOfficeIcon
+} from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
+import { Category, CreateCategoryDto, ShiftCapacity } from '@/lib/api/categories';
+import { Shift } from '@/lib/api/shifts';
 
 interface Branch {
   id: string;
@@ -28,6 +37,7 @@ interface CategoryFormModalProps {
   onClose: () => void;
   category?: Category | null;
   branches?: Branch[];
+  shifts?: Shift[];
   onSubmit: (data: CreateCategoryDto) => Promise<boolean>;
   loading?: boolean;
 }
@@ -37,6 +47,7 @@ export function CategoryFormModal({
   onClose,
   category,
   branches = [],
+  shifts = [],
   onSubmit,
   loading = false,
 }: CategoryFormModalProps) {
@@ -50,10 +61,20 @@ export function CategoryFormModal({
     maxAge: undefined,
     requiresEquipment: false,
     branchId: '',
+    shifts: [],
   });
+
+  const [selectedShifts, setSelectedShifts] = useState<ShiftCapacity[]>([]);
 
   useEffect(() => {
     if (category) {
+      const categoryShifts = category.shifts?.map(cs => ({
+        shiftId: cs.shiftId,
+        capacity: cs.capacity
+      })) || [];
+      
+      setSelectedShifts(categoryShifts);
+      
       setFormData({
         name: category.name || '',
         description: category.description || '',
@@ -64,6 +85,7 @@ export function CategoryFormModal({
         maxAge: category.maxAge,
         requiresEquipment: category.requiresEquipment || false,
         branchId: category.branchId || '',
+        shifts: categoryShifts,
       });
     } else {
       setFormData({
@@ -76,12 +98,48 @@ export function CategoryFormModal({
         maxAge: undefined,
         requiresEquipment: false,
         branchId: '',
+        shifts: [],
       });
+      setSelectedShifts([]);
     }
   }, [category, isOpen]);
 
+  const handleShiftToggle = (shiftId: string) => {
+    setSelectedShifts(prev => {
+      const exists = prev.find(s => s.shiftId === shiftId);
+      if (exists) {
+        const newShifts = prev.filter(s => s.shiftId !== shiftId);
+        setFormData(prevData => ({ ...prevData, shifts: newShifts }));
+        return newShifts;
+      } else {
+        const newShifts = [...prev, { shiftId, capacity: 20 }];
+        setFormData(prevData => ({ ...prevData, shifts: newShifts }));
+        return newShifts;
+      }
+    });
+  };
+
+  const handleShiftCapacityChange = (shiftId: string, capacity: number) => {
+    const updatedShifts = selectedShifts.map(s =>
+      s.shiftId === shiftId ? { ...s, capacity } : s
+    );
+    setSelectedShifts(updatedShifts);
+    setFormData(prev => ({ ...prev, shifts: updatedShifts }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name) {
+      toast.error('El nombre de la categoría es requerido');
+      return;
+    }
+    
+    if (!formData.branchId) {
+      toast.error('Debe seleccionar una sucursal');
+      return;
+    }
+
     const success = await onSubmit(formData);
     if (success) {
       onClose();
@@ -114,7 +172,7 @@ export function CategoryFormModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-r from-[#7c0613] to-[#4a030b] rounded-lg flex items-center justify-center">
@@ -132,8 +190,7 @@ export function CategoryFormModal({
                   </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Nombre */}
+                <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Nombre de la Categoría *
@@ -148,7 +205,6 @@ export function CategoryFormModal({
                     />
                   </div>
 
-                  {/* Descripción */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Descripción
@@ -162,67 +218,89 @@ export function CategoryFormModal({
                     />
                   </div>
 
-                  {/* Tipo de Categoría */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Tipo de Categoría
-                    </label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
-                    >
-                      {categoryTypes.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Tipo de Categoría
+                      </label>
+                      <select
+                        value={formData.type}
+                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                      >
+                        {categoryTypes.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  {/* Precio Mensual */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Precio Mensual (Bs.) *
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Precio Mensual (Bs.) *
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.monthlyPrice}
+                          onChange={(e) => setFormData({ ...formData, monthlyPrice: parseFloat(e.target.value) || 0 })}
+                          className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                          required
+                        />
                       </div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.monthlyPrice}
-                        onChange={(e) => setFormData({ ...formData, monthlyPrice: parseFloat(e.target.value) || 0 })}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
-                        required
-                        placeholder="0.00"
-                      />
                     </div>
                   </div>
 
-                  {/* Capacidad Máxima */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Capacidad Máxima
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <UsersIcon className="h-5 w-5 text-gray-400" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Capacidad Máxima
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <UsersIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.maxCapacity || ''}
+                          onChange={(e) => setFormData({ ...formData, maxCapacity: e.target.value ? parseInt(e.target.value) : undefined })}
+                          className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                        />
                       </div>
-                      <input
-                        type="number"
-                        min="1"
-                        value={formData.maxCapacity || ''}
-                        onChange={(e) => setFormData({ ...formData, maxCapacity: e.target.value ? parseInt(e.target.value) : undefined })}
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
-                        placeholder="20"
-                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Sucursal *
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <select
+                          value={formData.branchId}
+                          onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                          className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                          required
+                        >
+                          <option value="">Seleccionar sucursal</option>
+                          {branches.map((branch) => (
+                            <option key={branch.id} value={branch.id}>
+                              {branch.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Rango de Edad */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -252,7 +330,6 @@ export function CategoryFormModal({
                     </div>
                   </div>
 
-                  {/* Requiere Equipo */}
                   <div className="flex items-center">
                     <input
                       type="checkbox"
@@ -266,27 +343,59 @@ export function CategoryFormModal({
                     </label>
                   </div>
 
-                  {/* Sucursal */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Sucursal *
-                    </label>
-                    <select
-                      value={formData.branchId}
-                      onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
-                      required
-                    >
-                      <option value="">Seleccionar sucursal</option>
-                      {branches.map((branch) => (
-                        <option key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Sección de Turnos */}
+                  {shifts.length > 0 && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <ClockIcon className="w-5 h-5 text-[#7c0613]" />
+                        <label className="text-sm font-semibold text-gray-900 dark:text-white">
+                          Turnos y Cupos
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        Seleccione los turnos disponibles para esta categoría
+                      </p>
+                      <div className="space-y-3">
+                        {shifts.map((shift) => {
+                          const selectedShift = selectedShifts.find(s => s.shiftId === shift.id);
+                          const isSelected = !!selectedShift;
+                          
+                          return (
+                            <div key={shift.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                              <input
+                                type="checkbox"
+                                id={`shift-${shift.id}`}
+                                checked={isSelected}
+                                onChange={() => handleShiftToggle(shift.id)}
+                                className="w-4 h-4 text-[#7c0613] focus:ring-[#7c0613] border-gray-300 rounded"
+                              />
+                              <label htmlFor={`shift-${shift.id}`} className="flex-1 text-sm text-gray-700 dark:text-gray-300">
+                                <span className="font-medium">{shift.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {shift.startTime} - {shift.endTime}
+                                </span>
+                              </label>
+                              {isSelected && (
+                                <div className="w-32">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={formData.maxCapacity || 100}
+                                    value={selectedShift?.capacity || 20}
+                                    onChange={(e) => handleShiftCapacityChange(shift.id, parseInt(e.target.value) || 0)}
+                                    className="w-full px-2 py-1 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                                    placeholder="Cupos"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="flex gap-3 pt-4">
+                  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <button
                       type="button"
                       onClick={onClose}

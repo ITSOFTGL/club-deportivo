@@ -4,6 +4,17 @@ import { Event, CreateEventDto, UpdateEventDto } from '@/lib/api/events';
 import eventsApi from '@/lib/api/events';
 import toast from 'react-hot-toast';
 
+function sanitizeEventPayload<T extends CreateEventDto | UpdateEventDto>(data: T): T {
+  const cleaned = { ...data } as Record<string, unknown>;
+  for (const key of ['categoryId', 'branchId', 'description', 'venueName', 'earlyBirdDate'] as const) {
+    if (cleaned[key] === '') cleaned[key] = undefined;
+  }
+  if (cleaned.earlyBirdCost === 0 || cleaned.earlyBirdCost === '') {
+    cleaned.earlyBirdCost = undefined;
+  }
+  return cleaned as T;
+}
+
 interface EventsState {
   events: Event[];
   loading: boolean;
@@ -39,16 +50,17 @@ export const useEventsStore = create<EventsState>((set, get) => ({
   createEvent: async (data) => {
     set({ loading: true });
     try {
-      const newEvent = await eventsApi.create(data);
-      set((state) => ({
-        events: [newEvent, ...state.events],
-        loading: false,
-      }));
+      await eventsApi.create(sanitizeEventPayload(data));
+      await get().fetchEvents();
+      set({ loading: false });
       toast.success('Evento creado exitosamente');
       return true;
     } catch (error: any) {
       console.error('Error creating event:', error);
-      toast.error(error?.message || 'Error al crear evento');
+      const msg = Array.isArray(error?.message)
+        ? error.message.join(', ')
+        : error?.message || 'Error al crear evento';
+      toast.error(msg);
       set({ loading: false });
       return false;
     }
@@ -57,7 +69,7 @@ export const useEventsStore = create<EventsState>((set, get) => ({
   updateEvent: async (id, data) => {
     set({ loading: true });
     try {
-      const updatedEvent = await eventsApi.update(id, data);
+      const updatedEvent = await eventsApi.update(id, sanitizeEventPayload(data));
       set((state) => ({
         events: state.events.map((e) => (e.id === id ? updatedEvent : e)),
         loading: false,

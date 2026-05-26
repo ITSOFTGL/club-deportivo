@@ -1,33 +1,31 @@
-// lib/api/shifts.ts
-import api from '../axios';
+import api from '@/lib/axios';
 
 export interface Shift {
   id: string;
   name: string;
-  type: 'MORNING' | 'AFTERNOON' | 'EVENING';
   startTime: string;
   endTime: string;
+  description?: string;
   isActive: boolean;
   createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface CreateShiftDto {
   name: string;
-  type: 'MORNING' | 'AFTERNOON' | 'EVENING';
   startTime: string;
   endTime: string;
-}
-
-export interface UpdateShiftDto extends Partial<CreateShiftDto> {
+  description?: string;
   isActive?: boolean;
 }
 
+export interface UpdateShiftDto extends Partial<CreateShiftDto> {}
+
 const shiftsApi = {
   getAll: (): Promise<Shift[]> => api.get('/shifts'),
-  getById: (id: string): Promise<Shift> => api.get(`/shifts/${id}`),
+  getOne: (id: string): Promise<Shift> => api.get(`/shifts/${id}`),
   create: (data: CreateShiftDto): Promise<Shift> => api.post('/shifts', data),
-  update: (id: string, data: UpdateShiftDto): Promise<Shift> => api.patch(`/shifts/${id}`, data),
+  update: (id: string, data: UpdateShiftDto): Promise<Shift> =>
+    api.patch(`/shifts/${id}`, data),
   delete: (id: string): Promise<void> => api.delete(`/shifts/${id}`),
 };
 

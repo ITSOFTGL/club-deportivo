@@ -1,4 +1,5 @@
-// store/categoriesStore.ts - Asegurar que use CreateCategoryDto
+// store/categoriesStore.ts
+// store/categoriesStore.ts
 import { create } from 'zustand';
 import { Category, CreateCategoryDto, UpdateCategoryDto } from '@/lib/api/categories';
 import categoriesApi from '@/lib/api/categories';
@@ -28,7 +29,8 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const data = await categoriesApi.getAll();
-      set({ categories: Array.isArray(data) ? data : [], loading: false });
+      const categoriesArray = Array.isArray(data) ? data : [];
+      set({ categories: categoriesArray, loading: false });
     } catch (error: any) {
       console.error('Error fetching categories:', error);
       set({ error: error.message, categories: [], loading: false });
@@ -36,25 +38,24 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
     }
   },
 
-  createCategory: async (data) => {
+  createCategory: async (data: CreateCategoryDto) => {
     set({ loading: true });
     try {
-      const newCategory = await categoriesApi.create(data);
-      set((state) => ({
-        categories: [newCategory, ...state.categories],
-        loading: false,
-      }));
+      await categoriesApi.create(data);
+      await get().fetchCategories();
+      set({ loading: false });
       toast.success('Categoría creada exitosamente');
       return true;
     } catch (error: any) {
       console.error('Error creating category:', error);
-      toast.error(error?.message || 'Error al crear categoría');
+      console.error('Response:', error.response?.data);
+      toast.error(error?.response?.data?.message || 'Error al crear categoría');
       set({ loading: false });
       return false;
     }
   },
 
-  updateCategory: async (id, data) => {
+  updateCategory: async (id: string, data: UpdateCategoryDto) => {
     set({ loading: true });
     try {
       const updatedCategory = await categoriesApi.update(id, data);
@@ -66,13 +67,13 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error updating category:', error);
-      toast.error(error?.message || 'Error al actualizar categoría');
+      toast.error(error?.response?.data?.message || 'Error al actualizar categoría');
       set({ loading: false });
       return false;
     }
   },
 
-  deleteCategory: async (id) => {
+  deleteCategory: async (id: string) => {
     set({ loading: true });
     try {
       await categoriesApi.delete(id);
@@ -84,7 +85,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error deleting category:', error);
-      toast.error(error?.message || 'Error al eliminar categoría');
+      toast.error(error?.response?.data?.message || 'Error al eliminar categoría');
       set({ loading: false });
       return false;
     }

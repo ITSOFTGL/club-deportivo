@@ -1,16 +1,11 @@
 // components/shifts/ShiftFormModal.tsx
+// components/shifts/ShiftFormModal.tsx
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { Shift, CreateShiftDto } from '@/lib/api/shifts';
-
-const shiftTypes = [
-  { value: 'MORNING', label: 'Mañana', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'AFTERNOON', label: 'Tarde', color: 'bg-orange-100 text-orange-800' },
-  { value: 'EVENING', label: 'Noche', color: 'bg-indigo-100 text-indigo-800' },
-];
 
 interface ShiftFormModalProps {
   isOpen: boolean;
@@ -29,39 +24,54 @@ export function ShiftFormModal({
 }: ShiftFormModalProps) {
   const [formData, setFormData] = useState<CreateShiftDto>({
     name: '',
-    type: 'MORNING',
-    startTime: '08:00',
-    endTime: '12:00',
+    startTime: '',
+    endTime: '',
+    description: '',
+    isActive: true,
   });
 
   useEffect(() => {
     if (shift) {
       setFormData({
         name: shift.name || '',
-        type: shift.type || 'MORNING',
-        startTime: shift.startTime || '08:00',
-        endTime: shift.endTime || '12:00',
+        startTime: shift.startTime || '',
+        endTime: shift.endTime || '',
+        description: shift.description || '',
+        isActive: shift.isActive ?? true,
       });
     } else {
       setFormData({
         name: '',
-        type: 'MORNING',
-        startTime: '08:00',
-        endTime: '12:00',
+        startTime: '',
+        endTime: '',
+        description: '',
+        isActive: true,
       });
     }
   }, [shift, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name) {
+      alert('El nombre del turno es requerido');
+      return;
+    }
+    
+    if (!formData.startTime) {
+      alert('La hora de inicio es requerida');
+      return;
+    }
+    
+    if (!formData.endTime) {
+      alert('La hora de fin es requerida');
+      return;
+    }
+
     const success = await onSubmit(formData);
     if (success) {
       onClose();
     }
-  };
-
-  const updateField = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -116,30 +126,14 @@ export function ShiftFormModal({
                     <input
                       type="text"
                       value={formData.name}
-                      onChange={(e) => updateField('name', e.target.value)}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
                       required
                       placeholder="Ej: Mañana, Tarde, Noche"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Tipo de Turno *
-                    </label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) => updateField('type', e.target.value)}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
-                      required
-                    >
-                      {shiftTypes.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Hora Inicio *
@@ -147,7 +141,7 @@ export function ShiftFormModal({
                       <input
                         type="time"
                         value={formData.startTime}
-                        onChange={(e) => updateField('startTime', e.target.value)}
+                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
                         required
                       />
@@ -159,11 +153,37 @@ export function ShiftFormModal({
                       <input
                         type="time"
                         value={formData.endTime}
-                        onChange={(e) => updateField('endTime', e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
                         required
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Descripción
+                    </label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                      rows={2}
+                      placeholder="Descripción opcional"
+                    />
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      className="w-4 h-4 text-[#7c0613] focus:ring-[#7c0613] border-gray-300 rounded"
+                    />
+                    <label htmlFor="isActive" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                      Turno activo
+                    </label>
                   </div>
 
                   <div className="flex gap-3 pt-4">

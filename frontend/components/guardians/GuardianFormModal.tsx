@@ -147,8 +147,12 @@ export function GuardianFormModal({
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Alumno *
+                      Alumno vinculado *
                     </label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Contacto de emergencia adicional. El alumno debe existir antes
+                      (creado con su cuenta padre/madre en Alumnos).
+                    </p>
                     <select
                       value={formData.studentId}
                       onChange={(e) => updateField('studentId', e.target.value)}

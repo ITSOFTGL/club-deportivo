@@ -2,7 +2,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ParentShopView } from '@/components/products/ParentShopView';
 import { 
   MagnifyingGlassIcon, 
   PlusIcon, 
@@ -35,6 +37,11 @@ const productTypeColors: Record<string, string> = {
 };
 
 export default function ProductsPage() {
+  const { data: session } = useSession();
+  const role = session?.user?.role ?? 'PARENT';
+  const isParent = role === 'PARENT';
+  const canManage = role === 'SUPER_ADMIN' || role === 'ADMIN';
+
   const { products, loading, searchTerm, setSearchTerm, fetchProducts, createProduct, updateProduct, deleteProduct } = useProductsStore();
   const { categories, fetchCategories } = useCategoriesStore();
   const { branches, fetchBranches } = useBranchesStore();
@@ -98,6 +105,20 @@ export default function ProductsPage() {
     setIsModalOpen(true);
   };
 
+  if (isParent) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Tienda</h1>
+          <p className="text-gray-500 mt-1">
+            Agrega productos al carrito y solicita tu reserva o pago
+          </p>
+        </div>
+        <ParentShopView products={products} loading={loading} />
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Header */}
@@ -106,16 +127,18 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tienda</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Gestiona uniformes, accesorios y equipamiento</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingProduct(null);
-            setIsModalOpen(true);
-          }}
-          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#7c0613] to-[#4a030b] text-white rounded-lg hover:shadow-lg transition-all shadow-md"
-        >
-          <PlusIcon className="w-5 h-5 mr-2" />
-          Nuevo Producto
-        </button>
+        {canManage && (
+          <button
+            onClick={() => {
+              setEditingProduct(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#7c0613] to-[#4a030b] text-white rounded-lg hover:shadow-lg transition-all shadow-md"
+          >
+            <PlusIcon className="w-5 h-5 mr-2" />
+            Nuevo Producto
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -200,9 +223,17 @@ export default function ProductsPage() {
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
+                          {product.mainImage ? (
+                            <img
+                              src={product.mainImage}
+                              alt={product.name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                          ) : (
                           <div className="w-10 h-10 bg-gradient-to-r from-[#7c0613] to-[#4a030b] rounded-lg flex items-center justify-center">
                             <ShoppingBagIcon className="w-5 h-5 text-white" />
                           </div>
+                          )}
                           <div>
                             <p className="font-medium text-gray-900">{product.name}</p>
                             <p className="text-xs text-gray-500 truncate max-w-xs">{product.description}</p>
@@ -247,23 +278,27 @@ export default function ProductsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setDeletingProduct(product);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Eliminar"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
+                        {canManage && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Editar"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeletingProduct(product);
+                                setIsDeleteModalOpen(true);
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Eliminar"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </td>
                     </motion.tr>
                   ))}
