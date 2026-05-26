@@ -18,33 +18,39 @@ export class ShiftsController {
   @Post()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Crear un nuevo turno' })
-  create(@Body() createShiftDto: CreateShiftDto) {
-    return this.shiftsService.create(createShiftDto);
+  async create(@Body() createShiftDto: CreateShiftDto) {
+    console.log('📝 POST /shifts - Creando turno:', createShiftDto);
+    const result = await this.shiftsService.create(createShiftDto);
+    console.log('✅ Turno creado:', result);
+    return result;
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los turnos' })
-  findAll() {
-    return this.shiftsService.findAll();
+  async findAll() {
+    console.log('📋 GET /shifts - Obteniendo todos los turnos');
+    const result = await this.shiftsService.findAll();
+    console.log(`✅ Encontrados ${result.length} turnos`);
+    return result;
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un turno por ID' })
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     return this.shiftsService.findOne(id);
   }
 
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Actualizar un turno' })
-  update(@Param('id') id: string, @Body() updateShiftDto: UpdateShiftDto) {
+  async update(@Param('id') id: string, @Body() updateShiftDto: UpdateShiftDto) {
     return this.shiftsService.update(id, updateShiftDto);
   }
 
   @Delete(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Eliminar un turno' })
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string) {
     return this.shiftsService.remove(id);
   }
 }

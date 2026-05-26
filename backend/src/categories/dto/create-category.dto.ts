@@ -1,5 +1,16 @@
-import { IsString, IsOptional, IsNumber, IsBoolean, IsEnum, Min, Max } from 'class-validator';
+// backend/src/categories/dto/create-category.dto.ts
+import { IsString, IsOptional, IsNumber, IsBoolean, IsEnum, Min, Max, IsArray, ValidateNested } from 'class-validator';
 import { CategoryType } from '@prisma/client';
+import { Type } from 'class-transformer';
+
+export class ShiftCapacityDto {
+  @IsString()
+  shiftId!: string;
+
+  @IsNumber()
+  @Min(1)
+  capacity!: number;
+}
 
 export class CreateCategoryDto {
   @IsString()
@@ -38,4 +49,10 @@ export class CreateCategoryDto {
 
   @IsString()
   branchId!: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ShiftCapacityDto)
+  shifts?: ShiftCapacityDto[];
 }

@@ -425,10 +425,11 @@ model Student {
   hasAcf       Boolean  @default(false)
   acefiDate    DateTime?
   acfDate      DateTime?
-  status       String   @default("ACTIVE")
-  parentId     String
-  branchId     String
-  categoryId   String
+  status           String   @default("ACTIVE")
+  discountPercent  Float    @default(0)
+  parentId         String
+  branchId         String
+  categoryId       String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { AttendancesService } from './attendances.service';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { BatchAttendanceDto } from './dto/batch-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -20,14 +21,42 @@ export class AttendancesController {
   @Post()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @ApiOperation({ summary: 'Crear registro de asistencia' })
-  create(@Body() createDto: CreateAttendanceDto) {
+  create(
+    @Body() createDto: CreateAttendanceDto,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    if (!createDto.verifiedBy) {
+      createDto.verifiedBy = actor.id;
+    }
     return this.attendancesService.create(createDto);
   }
 
-  @Get()
+  @Post('batch')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
+  @ApiOperation({ summary: 'Guardar lista de asistencia del día' })
+  saveBatch(
+    @Body() dto: BatchAttendanceDto,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.attendancesService.saveBatch({
+      ...dto,
+      verifiedBy: dto.verifiedBy || actor.id,
+    });
+  }
+
+  @Get()
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT)
   @ApiOperation({ summary: 'Obtener todas las asistencias' })
-  findAll() {
+  findAll(
+    @Query('date') date?: string,
+    @Query('studentId') studentId?: string,
+  ) {
+    if (date && studentId) {
+      return this.attendancesService.findByDateAndStudent(date, studentId);
+    }
+    if (date) {
+      return this.attendancesService.findByDate(date);
+    }
     return this.attendancesService.findAll();
   }
 
@@ -48,7 +77,7 @@ export class AttendancesController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @ApiOperation({ summary: 'Asistencias por fecha' })
   findByDate(@Param('date') date: string) {
-    return this.attendancesService.findByDate(new Date(date));
+    return this.attendancesService.findByDate(date);
   }
 
   @Patch(':id/mark-present')

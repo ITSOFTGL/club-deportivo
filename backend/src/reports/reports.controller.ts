@@ -1,34 +1,50 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { ReportsService } from './reports.service';
-import { CreateReportDto } from './dto/create-report.dto';
-import { UpdateReportDto } from './dto/update-report.dto';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('reports')
+@ApiBearerAuth()
 @Controller('reports')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
-  @Post()
-  create(@Body() createReportDto: CreateReportDto) {
-    return this.reportsService.create(createReportDto);
+  @Get('dashboard')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.COLLECTOR,
+  )
+  @ApiOperation({ summary: 'Estadísticas del dashboard / reportes' })
+  getDashboard() {
+    return this.reportsService.getDashboard();
   }
 
-  @Get()
-  findAll() {
-    return this.reportsService.findAll();
+  @Get('export/payments')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  exportPayments() {
+    return this.reportsService.getPaymentsExport();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.reportsService.findOne(+id);
+  @Get('export/teachers')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  exportTeachers() {
+    return this.reportsService.getTeachersExport();
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateReportDto: UpdateReportDto) {
-    return this.reportsService.update(+id, updateReportDto);
+  @Get('export/categories-students')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  exportCategoriesStudents(@Query('categoryId') categoryId?: string) {
+    return this.reportsService.getCategoriesStudentsExport(categoryId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.reportsService.remove(+id);
+  @Get('export/parents')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  exportParents(@Query('search') search?: string) {
+    return this.reportsService.getParentsContactsExport(search);
   }
 }

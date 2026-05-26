@@ -25,7 +25,10 @@ export class TeacherAssignmentsController {
   @Get()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @ApiOperation({ summary: 'Obtener todas las asignaciones' })
-  findAll() {
+  findAll(@Query('teacherId') teacherId?: string) {
+    if (teacherId) {
+      return this.teacherAssignmentsService.findByTeacher(teacherId);
+    }
     return this.teacherAssignmentsService.findAll();
   }
 

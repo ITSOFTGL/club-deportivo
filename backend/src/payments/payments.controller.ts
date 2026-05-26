@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, UseGuards } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -13,6 +13,18 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get('config')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.COLLECTOR,
+    UserRole.PARENT,
+  )
+  @ApiOperation({ summary: 'URL del QR de pago del club' })
+  getConfig() {
+    return this.paymentsService.getClubPaymentConfig();
+  }
 
   @Post('generate-qr/:studentId')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR, UserRole.PARENT)
@@ -39,6 +51,13 @@ export class PaymentsController {
   @ApiOperation({ summary: 'Obtener historial de pagos de un alumno' })
   findByStudent(@Param('studentId') studentId: string) {
     return this.paymentsService.findByStudent(studentId);
+  }
+
+  @Patch(':id/verify')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  @ApiOperation({ summary: 'Verificar pago pendiente (comprobante QR)' })
+  verify(@Param('id') id: string) {
+    return this.paymentsService.verify(id);
   }
 
   @Get(':id')

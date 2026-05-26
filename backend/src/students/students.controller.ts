@@ -1,5 +1,15 @@
 // backend/src/students/students.controller.ts
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -23,9 +33,20 @@ export class StudentsController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT)
   @Get()
-  findAll(@CurrentUser() actor: AuthUser) {
+  findAll(
+    @CurrentUser() actor: AuthUser,
+    @Query('categoryIds') categoryIds?: string,
+  ) {
     if (actor.role === UserRole.PARENT) {
       return this.studentsService.findByParent(actor.id);
+    }
+    if (actor.role === UserRole.TEACHER) {
+      return this.studentsService.findByTeacher(actor.id);
+    }
+    if (categoryIds) {
+      return this.studentsService.findByCategoryIds(
+        categoryIds.split(',').filter(Boolean),
+      );
     }
     return this.studentsService.findAll();
   }

@@ -1,3 +1,4 @@
+// backend/src/categories/categories.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -8,54 +9,165 @@ export class CategoriesService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async create(createCategoryDto: CreateCategoryDto) {
-    return this.prismaService.prisma.category.create({
-      data: {
-        name: createCategoryDto.name,
-        description: createCategoryDto.description,
-        type: createCategoryDto.type,
-        monthlyPrice: createCategoryDto.monthlyPrice,
-        maxCapacity: createCategoryDto.maxCapacity,
-        minAge: createCategoryDto.minAge,
-        maxAge: createCategoryDto.maxAge,
-        requiresEquipment: createCategoryDto.requiresEquipment,
-        branchId: createCategoryDto.branchId,
-        isActive: true,
-      },
-      include: { branch: true },
+    const { shifts, ...categoryData } = createCategoryDto;
+
+    // Crear la categoría
+    const category = await this.prismaService.prisma.category.create({
+      data: categoryData,
     });
+
+    // Si hay turnos, crear los CategoryShifts
+    if (shifts && shifts.length > 0) {
+      const shiftIds = shifts.map(s => s.shiftId);
+      const existingShifts = await this.prismaService.prisma.shift.findMany({
+        where: { id: { in: shiftIds } }
+      });
+
+      const shiftsMap = new Map(existingShifts.map(s => [s.id, s]));
+
+      for (const shift of shifts) {
+        const shiftData = shiftsMap.get(shift.shiftId);
+        if (shiftData) {
+          await this.prismaService.prisma.categoryShift.create({
+            data: {
+              categoryId: category.id,
+              branchId: categoryData.branchId,
+              shiftId: shift.shiftId,
+              name: `${category.name} - ${shiftData.name}`,
+              startTime: shiftData.startTime,
+              endTime: shiftData.endTime,
+              daysOfWeek: 'LUN,MAR,MIE,JUE,VIE',
+              totalCapacity: shift.capacity,
+              enrolledCount: 0,
+              waitingList: 0,
+              monthlyPrice: categoryData.monthlyPrice,
+              enrollmentStart: new Date(),
+              enrollmentEnd: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+              isActive: true,
+              isFull: false,
+            },
+          });
+        }
+      }
+    }
+
+    return this.findOne(category.id);
   }
 
   async findAll() {
-    return this.prismaService.prisma.category.findMany({
-      where: { isActive: true },
-      include: { branch: true },
-      orderBy: { name: 'asc' },
+    const categories = await this.prismaService.prisma.category.findMany({
+      include: {
+        branch: true,
+        categoryShifts: {
+          include: {
+            shift: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
+
+    return categories.map(category => ({
+      ...category,
+      shifts: category.categoryShifts.map(cs => ({
+        shiftId: cs.shiftId,
+        capacity: cs.totalCapacity,
+        shift: cs.shift,
+      })),
+    }));
   }
 
   async findOne(id: string) {
     const category = await this.prismaService.prisma.category.findUnique({
       where: { id },
-      include: { branch: true },
+      include: {
+        branch: true,
+        categoryShifts: {
+          include: {
+            shift: true,
+          },
+        },
+      },
     });
-    if (!category) throw new NotFoundException('Categoría no encontrada');
-    return category;
+
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    return {
+      ...category,
+      shifts: category.categoryShifts.map(cs => ({
+        shiftId: cs.shiftId,
+        capacity: cs.totalCapacity,
+        shift: cs.shift,
+      })),
+    };
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
-    await this.findOne(id);
-    return this.prismaService.prisma.category.update({
+    const { shifts, ...categoryData } = updateCategoryDto;
+
+    const existingCategory = await this.findOne(id);
+
+    // Actualizar la categoría
+    const category = await this.prismaService.prisma.category.update({
       where: { id },
-      data: updateCategoryDto,
-      include: { branch: true },
+      data: categoryData,
     });
+
+    // Si se enviaron turnos, actualizar las relaciones
+    if (shifts !== undefined) {
+      // Eliminar relaciones existentes
+      await this.prismaService.prisma.categoryShift.deleteMany({
+        where: { categoryId: id },
+      });
+
+      // Crear nuevas relaciones
+      if (shifts.length > 0) {
+        const shiftIds = shifts.map(s => s.shiftId);
+        const existingShifts = await this.prismaService.prisma.shift.findMany({
+          where: { id: { in: shiftIds } }
+        });
+
+        const shiftsMap = new Map(existingShifts.map(s => [s.id, s]));
+
+        for (const shift of shifts) {
+          const shiftData = shiftsMap.get(shift.shiftId);
+          if (shiftData) {
+            await this.prismaService.prisma.categoryShift.create({
+              data: {
+                categoryId: id,
+                branchId: categoryData.branchId || existingCategory.branchId,
+                shiftId: shift.shiftId,
+                name: `${category.name || existingCategory.name} - ${shiftData.name}`,
+                startTime: shiftData.startTime,
+                endTime: shiftData.endTime,
+                daysOfWeek: 'LUN,MAR,MIE,JUE,VIE',
+                totalCapacity: shift.capacity,
+                enrolledCount: 0,
+                waitingList: 0,
+                monthlyPrice: categoryData.monthlyPrice || existingCategory.monthlyPrice,
+                enrollmentStart: new Date(),
+                enrollmentEnd: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+                isActive: true,
+                isFull: false,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    return this.findOne(id);
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    return this.prismaService.prisma.category.update({
+    await this.prismaService.prisma.categoryShift.deleteMany({
+      where: { categoryId: id },
+    });
+
+    return this.prismaService.prisma.category.delete({
       where: { id },
-      data: { isActive: false },
     });
   }
 }

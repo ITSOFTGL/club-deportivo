@@ -26,6 +26,10 @@ export class CreateEventDto {
   @IsDateString()
   endDate!: string;
 
+  @IsOptional()
+  @IsDateString()
+  registrationStart?: string;
+
   @IsDateString()
   registrationEnd!: string;
 

@@ -19,10 +19,12 @@ export class ShiftsService {
   }
 
   async findAll() {
-    return this.prismaService.prisma.shift.findMany({
-      where: { isActive: true },
-      orderBy: { startTime: 'asc' },
+    // IMPORTANTE: Devuelve TODOS los turnos sin filtrar
+    const shifts = await this.prismaService.prisma.shift.findMany({
+      orderBy: { createdAt: 'desc' },
     });
+    console.log(`📊 ShiftsService.findAll() devolviendo ${shifts.length} turnos`);
+    return shifts;
   }
 
   async findOne(id: string) {
@@ -43,9 +45,8 @@ export class ShiftsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prismaService.prisma.shift.update({
+    return this.prismaService.prisma.shift.delete({
       where: { id },
-      data: { isActive: false },
     });
   }
 }

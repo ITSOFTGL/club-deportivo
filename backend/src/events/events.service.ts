@@ -11,13 +11,15 @@ export class EventsService {
     return this.prismaService.prisma.event.create({
       data: {
         title: createDto.title,
-        description: createDto.description,
+        description: createDto.description || undefined,
         type: createDto.type,
-        categoryId: createDto.categoryId,
-        branchId: createDto.branchId,
+        categoryId: createDto.categoryId || undefined,
+        branchId: createDto.branchId || undefined,
         startDate: new Date(createDto.startDate),
         endDate: new Date(createDto.endDate),
-        registrationStart: new Date(),
+        registrationStart: createDto.registrationStart
+          ? new Date(createDto.registrationStart)
+          : new Date(),
         registrationEnd: new Date(createDto.registrationEnd),
         cost: createDto.cost,
         earlyBirdCost: createDto.earlyBirdCost,

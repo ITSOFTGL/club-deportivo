@@ -72,4 +72,8 @@ export class CreateStudentDto {
 
   @IsString()
   categoryId!: string;
+
+  @IsOptional()
+  @IsNumber()
+  discountPercent?: number;
 }

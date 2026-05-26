@@ -25,7 +25,13 @@ export class TeacherAssignmentsService {
   async findAll() {
     return this.prismaService.prisma.teacherAssignment.findMany({
       where: { isActive: true },
-      include: { teacher: true, categoryShift: true },
+      include: {
+        teacher: true,
+        categoryShift: {
+          include: { category: true, shift: true, branch: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -39,7 +45,12 @@ export class TeacherAssignmentsService {
   async findByTeacher(teacherId: string) {
     return this.prismaService.prisma.teacherAssignment.findMany({
       where: { teacherId, isActive: true },
-      include: { categoryShift: true },
+      include: {
+        categoryShift: {
+          include: { category: true, shift: true, branch: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -57,6 +68,12 @@ export class TeacherAssignmentsService {
     return this.prismaService.prisma.teacherAssignment.update({
       where: { id },
       data: updateDto,
+      include: {
+        teacher: true,
+        categoryShift: {
+          include: { category: true, shift: true, branch: true },
+        },
+      },
     });
   }
 
