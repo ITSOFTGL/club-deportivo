@@ -15,7 +15,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { useTeacherAssignmentsStore } from '@/store/teacherAssignmentsStore';
 import { useUsersStore } from '@/store/usersStore';
-import categoryShiftsApi, { CategoryShift } from '@/lib/api/category-shifts';
+import categoryShiftsApi, {
+  CategoryShift,
+  formatCategoryShiftLabel,
+} from '@/lib/api/category-shifts';
 import { TeacherAssignmentFormModal } from '@/components/teacher-assignments/TeacherAssignmentFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { CreateTeacherAssignmentDto } from '@/lib/api/teacher-assignments';
@@ -172,7 +175,7 @@ export default function AssignmentsPage() {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profesor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría / Turno</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grupo (sucursal + horario)</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Principal</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
@@ -225,9 +228,11 @@ export default function AssignmentsPage() {
                         <div className="flex items-center space-x-2">
                           <AcademicCapIcon className="w-4 h-4 text-gray-400" />
                           <span className="text-sm text-gray-600">
-                            {assignment.categoryShift?.category?.name
-                              ? `${assignment.categoryShift.category.name} — ${assignment.categoryShift.shift?.name ?? assignment.categoryShift.name}`
-                              : assignment.categoryShift?.name || 'N/A'}
+                            {assignment.categoryShift
+                              ? formatCategoryShiftLabel(
+                                  assignment.categoryShift as CategoryShift,
+                                )
+                              : 'N/A'}
                           </span>
                         </div>
                       </td>

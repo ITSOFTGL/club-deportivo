@@ -25,8 +25,9 @@ export class BatchAttendanceDto {
   @IsString()
   shiftId!: string;
 
+  @IsOptional()
   @IsString()
-  verifiedBy!: string;
+  verifiedBy?: string;
 
   @IsArray()
   @ArrayMinSize(1)

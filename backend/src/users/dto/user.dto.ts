@@ -5,16 +5,17 @@ import {
   IsEnum,
   IsOptional,
   IsString,
-  MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { UserRole, UserStatus } from '@prisma/client';
+import { IsStrongPassword } from '../../common/validators/is-strong-password.validator';
 
 export class CreateUserDto {
   @IsEmail()
   email!: string;
 
   @IsString()
-  @MinLength(6)
+  @IsStrongPassword()
   password!: string;
 
   @IsString()
@@ -61,6 +62,6 @@ export class UpdateUserStatusDto {
 
 export class AdminResetPasswordDto {
   @IsString()
-  @MinLength(6)
+  @IsStrongPassword()
   newPassword!: string;
 }

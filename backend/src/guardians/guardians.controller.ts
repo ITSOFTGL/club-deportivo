@@ -16,7 +16,7 @@ export class GuardiansController {
   constructor(private readonly guardiansService: GuardiansService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PARENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR, UserRole.TEACHER)
   @ApiOperation({ summary: 'Crear un nuevo apoderado' })
   create(@Body() createGuardianDto: CreateGuardianDto) {
     return this.guardiansService.create(createGuardianDto);
@@ -24,9 +24,15 @@ export class GuardiansController {
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los apoderados' })
-  findAll(@Query('studentId') studentId?: string) {
+  findAll(
+    @Query('studentId') studentId?: string,
+    @Query('categoryShiftId') categoryShiftId?: string,
+  ) {
     if (studentId) {
       return this.guardiansService.findByStudent(studentId);
+    }
+    if (categoryShiftId) {
+      return this.guardiansService.findByCategoryShiftScope(categoryShiftId);
     }
     return this.guardiansService.findAll();
   }

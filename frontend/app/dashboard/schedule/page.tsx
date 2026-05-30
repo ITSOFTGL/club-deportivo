@@ -3,8 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
-import { ClockIcon, AcademicCapIcon, BuildingOfficeIcon, StarIcon } from '@heroicons/react/24/outline';
-import { fetchTeacherAssignments, parseTeacherContext } from '@/lib/api/teacher';
+import {
+  ClockIcon,
+  AcademicCapIcon,
+  BuildingOfficeIcon,
+  StarIcon,
+  CalendarDaysIcon,
+} from '@heroicons/react/24/outline';
+import { fetchTeacherAssignments, buildTeacherSchedule } from '@/lib/api/teacher';
 import toast from 'react-hot-toast';
 
 export default function SchedulePage() {
@@ -19,6 +25,7 @@ export default function SchedulePage() {
       isLeadTeacher: boolean;
       startTime?: string;
       endTime?: string;
+      daysLabel?: string;
     }>
   >([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +36,9 @@ export default function SchedulePage() {
       setLoading(true);
       try {
         const assignments = await fetchTeacherAssignments(session.user.id);
-        const ctx = parseTeacherContext(
-          Array.isArray(assignments) ? assignments : [],
+        setSchedule(
+          buildTeacherSchedule(Array.isArray(assignments) ? assignments : []),
         );
-        setSchedule(ctx.schedule);
       } catch {
         toast.error('Error al cargar horarios');
       } finally {
@@ -59,7 +65,7 @@ export default function SchedulePage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Mis Horarios</h1>
         <p className="text-gray-500 mt-1">
-          Clases asignadas según categoría y turno
+          Cada tarjeta es un grupo: categoría, sucursal, días y horario
         </p>
       </div>
 
@@ -87,12 +93,20 @@ export default function SchedulePage() {
                   </p>
                   <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
                     <ClockIcon className="w-4 h-4" />
-                    {item.shiftName} · {formatTime(item.startTime)} -{' '}
-                    {formatTime(item.endTime)}
+                    {formatTime(item.startTime)} – {formatTime(item.endTime)}
                   </p>
+                  {item.daysLabel && (
+                    <p className="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                      <CalendarDaysIcon className="w-4 h-4" />
+                      {item.daysLabel}
+                    </p>
+                  )}
                 </div>
                 {item.isLeadTeacher && (
-                  <StarIcon className="w-6 h-6 text-yellow-500" title="Profesor principal" />
+                  <StarIcon
+                    className="w-6 h-6 text-yellow-500"
+                    title="Profesor principal"
+                  />
                 )}
               </div>
               <p className="text-sm text-gray-500 flex items-center gap-1">

@@ -30,6 +30,13 @@ export class NotificationsController {
     return this.notificationsService.findAll(userId || actor.id);
   }
 
+  @Post('sync-membership')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  @ApiOperation({ summary: 'Generar alertas de mensualidad por vencer' })
+  syncMembership() {
+    return this.notificationsService.syncMembershipAlerts();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener notificación por ID' })
   findOne(@Param('id') id: string) {

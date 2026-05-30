@@ -3,11 +3,13 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { sanitizeUser } from '../common/utils/sanitize-user';
+import { validatePassword } from '../common/utils/password.util';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AdminResetPasswordDto,
@@ -60,6 +62,8 @@ export class UsersService {
       });
       if (doc) throw new ConflictException('El documento ya está en uso');
     }
+    const pwdCheck = validatePassword(dto.password);
+    if (!pwdCheck.valid) throw new BadRequestException(pwdCheck.message);
     const hashed = await bcrypt.hash(dto.password, 10);
     const user = await this.prismaService.prisma.user.create({
       data: {
@@ -108,6 +112,10 @@ export class UsersService {
     }
 
     const { password, birthDate, ...rest } = dto;
+    if (password) {
+      const pwdCheck = validatePassword(password);
+      if (!pwdCheck.valid) throw new BadRequestException(pwdCheck.message);
+    }
     const user = await this.prismaService.prisma.user.update({
       where: { id },
       data: {
@@ -160,6 +168,8 @@ export class UsersService {
     this.ensureStaff(actor);
     const target = await this.requireUser(id);
     this.assertCanManage(actor, target);
+    const pwdCheck = validatePassword(dto.newPassword);
+    if (!pwdCheck.valid) throw new BadRequestException(pwdCheck.message);
     const hashed = await bcrypt.hash(dto.newPassword, 10);
     const user = await this.prismaService.prisma.user.update({
       where: { id },

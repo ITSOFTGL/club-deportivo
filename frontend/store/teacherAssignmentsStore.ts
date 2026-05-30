@@ -44,9 +44,13 @@ export const useTeacherAssignmentsStore = create<TeacherAssignmentsState>((set, 
       set({ loading: false });
       toast.success('Asignación creada exitosamente');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating assignment:', error);
-      toast.error(error?.message || 'Error al crear asignación');
+      const msg =
+        (error as { message?: string | string[] })?.message;
+      toast.error(
+        Array.isArray(msg) ? msg.join(', ') : msg || 'Error al crear asignación',
+      );
       set({ loading: false });
       return false;
     }
@@ -62,9 +66,13 @@ export const useTeacherAssignmentsStore = create<TeacherAssignmentsState>((set, 
       }));
       toast.success('Asignación actualizada exitosamente');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating assignment:', error);
-      toast.error(error?.message || 'Error al actualizar asignación');
+      const msg =
+        (error as { message?: string | string[] })?.message;
+      toast.error(
+        Array.isArray(msg) ? msg.join(', ') : msg || 'Error al actualizar asignación',
+      );
       set({ loading: false });
       return false;
     }

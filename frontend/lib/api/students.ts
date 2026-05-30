@@ -27,10 +27,19 @@ export interface Student {
   discountPercent?: number;
   membershipPaidUntil?: string | null;
   membershipActive?: boolean;
-  parentId: string;
+  membershipStatus?: string;
+  membershipLabel?: string;
+  membershipDaysRemaining?: number | null;
+  parentId?: string;
   branchId: string;
   categoryId: string;
-  parent?: { name: string; lastName: string; email: string };
+  parent?: { name: string; lastName: string; email: string; phone?: string };
+  guardians?: Array<{
+    name: string;
+    lastName: string;
+    phone: string;
+    isPrimary: boolean;
+  }>;
   branch?: { name: string };
   category?: { name: string; monthlyPrice?: number };
   createdAt?: string;
@@ -58,7 +67,7 @@ export interface CreateStudentDto {
   hasAcf?: boolean;
   acefiDate?: string;
   acfDate?: string;
-  parentId: string;
+  parentId?: string;
   branchId: string;
   categoryId: string;
   discountPercent?: number;
@@ -70,6 +79,7 @@ export interface UpdateStudentDto extends Partial<CreateStudentDto> {
 
 const studentsApi = {
   getAll: (): Promise<Student[]> => api.get('/students'),
+  getMembershipAlerts: (): Promise<Student[]> => api.get('/students/membership-alerts'),
   getById: (id: string): Promise<Student> => api.get(`/students/${id}`),
   create: (data: CreateStudentDto): Promise<Student> => api.post('/students', data),
   update: (id: string, data: UpdateStudentDto): Promise<Student> => api.patch(`/students/${id}`, data),

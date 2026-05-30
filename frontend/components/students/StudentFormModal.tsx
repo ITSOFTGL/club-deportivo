@@ -40,7 +40,7 @@ interface Student {
   emergencyPhone?: string;
   school?: string;
   grade?: string;
-  parentId: string;
+  parentId?: string;
   branchId: string;
   categoryId: string;
   discountPercent?: number;
@@ -64,7 +64,7 @@ interface CreateStudentDto {
   emergencyPhone?: string;
   school?: string;
   grade?: string;
-  parentId: string;
+  parentId?: string;
   branchId: string;
   categoryId: string;
 }
@@ -107,6 +107,8 @@ export function StudentFormModal({
   onSubmit,
   loading = false,
 }: StudentFormModalProps) {
+  const isQuickRegister = !student;
+  const [showMoreFields, setShowMoreFields] = useState(false);
   const [formData, setFormData] = useState<any>({
     name: '',
     lastName: '',
@@ -188,10 +190,13 @@ export function StudentFormModal({
       name: formData.name,
       lastName: formData.lastName,
       birthDate: formData.birthDate,
-      parentId: formData.parentId,
       branchId: formData.branchId,
       categoryId: formData.categoryId,
     };
+
+    if (formData.parentId?.trim()) {
+      dataToSend.parentId = formData.parentId;
+    }
     
     // Agregar campos opcionales si tienen valor
     if (formData.documentId && formData.documentId.trim()) dataToSend.documentId = formData.documentId;
@@ -256,7 +261,7 @@ export function StudentFormModal({
                       <UserGroupIcon className="w-5 h-5 text-white" />
                     </div>
                     <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
-                      {student ? 'Editar Alumno' : 'Nuevo Alumno'}
+                      {student ? 'Editar Alumno' : 'Registro rápido de alumno'}
                     </Dialog.Title>
                   </div>
                   <button
@@ -267,7 +272,52 @@ export function StudentFormModal({
                   </button>
                 </div>
 
+                {isQuickRegister && (
+                  <p className="text-sm text-gray-600 mb-4 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                    Solo datos esenciales. El apoderado y la cuenta de acceso se registran después en{' '}
+                    <strong>Apoderados</strong>. Luego registre el pago desde la lista de alumnos.
+                  </p>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+                  {/* Sucursal y categoría primero en registro rápido */}
+                  {isQuickRegister && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Sucursal *
+                        </label>
+                        <select
+                          value={formData.branchId}
+                          onChange={(e) => updateField('branchId', e.target.value)}
+                          className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                          required
+                        >
+                          <option value="">Seleccionar sucursal</option>
+                          {branches.map((b) => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Categoría *
+                        </label>
+                        <select
+                          value={formData.categoryId}
+                          onChange={(e) => updateField('categoryId', e.target.value)}
+                          className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                          required
+                        >
+                          <option value="">Seleccionar categoría</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Información Personal */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -328,6 +378,18 @@ export function StudentFormModal({
                     </div>
                   </div>
 
+                  {isQuickRegister && !showMoreFields && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreFields(true)}
+                      className="text-sm text-[#7c0613] font-medium hover:underline"
+                    >
+                      + Agregar más datos (documento, escuela, médico…)
+                    </button>
+                  )}
+
+                  {(!isQuickRegister || showMoreFields) && (
+                  <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -500,32 +562,11 @@ export function StudentFormModal({
                     />
                   </div>
 
-                  {/* Asignación */}
+                  {/* Asignación (solo edición o datos extra) */}
+                  {!isQuickRegister && (
                   <div className="border-t pt-4">
                     <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">Asignación</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Padre/Madre (usuario del sistema) *
-                        </label>
-                        <p className="text-xs text-amber-700 mb-2">
-                          Primero cree un usuario con rol <strong>Padre</strong> en Usuarios.
-                          Los contactos adicionales se agregan después en Apoderados.
-                        </p>
-                        <select
-                          value={formData.parentId}
-                          onChange={(e) => updateField('parentId', e.target.value)}
-                          className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
-                          required
-                        >
-                          <option value="">Seleccionar cuenta padre/madre</option>
-                          {parents.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} {p.lastName} - {p.email}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Sucursal *
@@ -560,6 +601,26 @@ export function StudentFormModal({
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Cuenta padre/madre (opcional)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Mejor asignar desde <strong>Apoderados</strong> con opción de crear cuenta.
+                        </p>
+                        <select
+                          value={formData.parentId}
+                          onChange={(e) => updateField('parentId', e.target.value)}
+                          className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                        >
+                          <option value="">Sin cuenta vinculada</option>
+                          {parents.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} {p.lastName} - {p.email}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Descuento mensualidad (%)
                         </label>
                         <input
@@ -574,12 +635,12 @@ export function StudentFormModal({
                           className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
                           placeholder="0"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Se aplica sobre la cuota de la categoría al cobrar.
-                        </p>
                       </div>
                     </div>
                   </div>
+                  )}
+                  </>
+                  )}
 
                   {/* Botones */}
                   <div className="flex gap-3 pt-4">

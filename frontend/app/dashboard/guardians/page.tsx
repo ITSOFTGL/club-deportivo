@@ -1,6 +1,8 @@
 // app/dashboard/guardians/page.tsx
 'use client';
 
+import { useSession } from 'next-auth/react';
+import { TeacherGuardiansView } from '@/components/guardians/TeacherGuardiansView';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -38,6 +40,17 @@ const relationshipColors: Record<string, string> = {
 };
 
 export default function GuardiansPage() {
+  const { data: session } = useSession();
+  const isTeacher = session?.user?.role === 'TEACHER';
+
+  if (isTeacher) {
+    return <TeacherGuardiansView />;
+  }
+
+  return <GuardiansAdminView />;
+}
+
+function GuardiansAdminView() {
   const { guardians, loading, searchTerm, setSearchTerm, fetchGuardians, createGuardian, updateGuardian, deleteGuardian } = useGuardiansStore();
   const { students, fetchStudents } = useStudentsStore();
   

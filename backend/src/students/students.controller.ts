@@ -31,17 +31,18 @@ export class StudentsController {
     return this.studentsService.create(createStudentDto);
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.COLLECTOR, UserRole.PARENT)
   @Get()
   findAll(
     @CurrentUser() actor: AuthUser,
     @Query('categoryIds') categoryIds?: string,
+    @Query('categoryShiftId') categoryShiftId?: string,
   ) {
     if (actor.role === UserRole.PARENT) {
       return this.studentsService.findByParent(actor.id);
     }
     if (actor.role === UserRole.TEACHER) {
-      return this.studentsService.findByTeacher(actor.id);
+      return this.studentsService.findByTeacher(actor.id, categoryShiftId);
     }
     if (categoryIds) {
       return this.studentsService.findByCategoryIds(
@@ -51,7 +52,13 @@ export class StudentsController {
     return this.studentsService.findAll();
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  @Get('membership-alerts')
+  findMembershipAlerts() {
+    return this.studentsService.findMembershipAlerts();
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.COLLECTOR, UserRole.PARENT)
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() actor: AuthUser) {
     return this.studentsService.findOne(id);

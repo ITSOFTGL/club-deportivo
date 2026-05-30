@@ -16,7 +16,9 @@ export interface Attendance {
     name: string;
     lastName: string;
     categoryId?: string;
+    branchId?: string;
     category?: { id: string; name: string };
+    branch?: { id: string; name: string };
   };
   user?: {
     id: string;
@@ -24,6 +26,12 @@ export interface Attendance {
     lastName?: string;
     email?: string;
   };
+  verifier?: {
+    id: string;
+    name: string;
+    lastName?: string;
+    email?: string;
+  } | null;
   shift?: { id: string; name: string };
   createdAt?: string;
   updatedAt?: string;
@@ -53,8 +61,12 @@ export interface BatchAttendanceDto {
 
 const attendancesApi = {
   getAll: (): Promise<Attendance[]> => api.get('/attendances'),
-  getByDate: (date: string): Promise<Attendance[]> =>
-    api.get(`/attendances?date=${date}`),
+  getByDate: (date: string, teacherId?: string): Promise<Attendance[]> =>
+    api.get(
+      `/attendances?date=${date}${teacherId ? `&teacherId=${teacherId}` : ''}`,
+    ),
+  getByDateAndShift: (date: string, shiftId: string): Promise<Attendance[]> =>
+    api.get(`/attendances?date=${date}&shiftId=${shiftId}`),
   getByDateAndStudent: (
     date: string,
     studentId: string,

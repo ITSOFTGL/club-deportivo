@@ -31,20 +31,50 @@ export class ReportsController {
   }
 
   @Get('export/teachers')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
   exportTeachers() {
     return this.reportsService.getTeachersExport();
   }
 
   @Get('export/categories-students')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
-  exportCategoriesStudents(@Query('categoryId') categoryId?: string) {
-    return this.reportsService.getCategoriesStudentsExport(categoryId);
+  exportCategoriesStudents(
+    @Query('categoryId') categoryId?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.reportsService.getCategoriesStudentsExport(
+      categoryId,
+      branchId,
+    );
   }
 
   @Get('export/parents')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
-  exportParents(@Query('search') search?: string) {
-    return this.reportsService.getParentsContactsExport(search);
+  exportParents(
+    @Query('search') search?: string,
+    @Query('branchId') branchId?: string,
+    @Query('categoryId') categoryId?: string,
+  ) {
+    return this.reportsService.getParentsContactsExport(
+      search,
+      branchId,
+      categoryId,
+    );
+  }
+
+  @Get('export/membership')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  exportMembership(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('branchId') branchId?: string,
+    @Query('categoryId') categoryId?: string,
+  ) {
+    return this.reportsService.getPaymentsMembershipExport({
+      from,
+      to,
+      branchId,
+      categoryId,
+    });
   }
 }

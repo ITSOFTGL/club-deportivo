@@ -37,6 +37,42 @@ export class AttendancesService {
     return localDayRange(new Date());
   }
 
+  private async enrichWithVerifier<T extends { verifiedBy?: string | null }>(
+    rows: T[],
+  ) {
+    const ids = [
+      ...new Set(rows.map((r) => r.verifiedBy).filter(Boolean)),
+    ] as string[];
+    if (ids.length === 0) return rows.map((r) => ({ ...r, verifier: null }));
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, lastName: true, email: true },
+    });
+    const map = new Map(users.map((u) => [u.id, u]));
+
+    return rows.map((r) => ({
+      ...r,
+      verifier: r.verifiedBy ? map.get(r.verifiedBy) ?? null : null,
+    }));
+  }
+
+  private async createAttendanceReservation(
+    shiftId: string,
+    parentUserId: string,
+  ) {
+    return this.prisma.reservation.create({
+      data: {
+        shiftId,
+        userId: parentUserId,
+        amount: 0,
+        discount: 0,
+        finalAmount: 0,
+        status: PaymentStatus.PAID,
+      },
+    });
+  }
+
   async create(createDto: CreateAttendanceDto) {
     if (createDto.studentId) {
       return this.registerForStudent({
@@ -117,28 +153,23 @@ export class AttendancesService {
       });
     }
 
-    let reservation = await this.prisma.reservation.findFirst({
-      where: { shiftId: params.shiftId, userId: student.parentId },
-    });
-
-    if (!reservation) {
-      reservation = await this.prisma.reservation.create({
-        data: {
-          shiftId: params.shiftId,
-          userId: student.parentId,
-          amount: 0,
-          discount: 0,
-          finalAmount: 0,
-          status: PaymentStatus.PAID,
-        },
-      });
+    const reservationUserId = student.parentId ?? params.verifiedBy;
+    if (!reservationUserId) {
+      throw new BadRequestException(
+        'Registre un apoderado con cuenta o guarde la lista con sesión de profesor',
+      );
     }
+
+    const reservation = await this.createAttendanceReservation(
+      params.shiftId,
+      reservationUserId,
+    );
 
     return this.prisma.attendance.create({
       data: {
         reservationId: reservation.id,
         shiftId: params.shiftId,
-        userId: student.parentId,
+        userId: reservationUserId,
         studentId: params.studentId,
         status: params.status,
         verifiedBy: params.verifiedBy,
@@ -154,6 +185,10 @@ export class AttendancesService {
   }
 
   async saveBatch(dto: BatchAttendanceDto) {
+    if (!dto.verifiedBy) {
+      throw new BadRequestException('verifiedBy es requerido');
+    }
+
     const results: Awaited<ReturnType<typeof this.registerForStudent>>[] = [];
     for (const record of dto.records) {
       const saved = await this.registerForStudent({
@@ -181,15 +216,16 @@ export class AttendancesService {
   }
 
   async findAll() {
-    return this.prisma.attendance.findMany({
+    const rows = await this.prisma.attendance.findMany({
       include: {
         reservation: true,
         shift: true,
         user: true,
-        student: { include: { category: true } },
+        student: { include: { category: true, branch: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
+    return this.enrichWithVerifier(rows);
   }
 
   async findByUser(userId: string) {
@@ -199,25 +235,47 @@ export class AttendancesService {
     });
   }
 
-  async findByShift(shiftId: string) {
-    return this.prisma.attendance.findMany({
-      where: { shiftId },
-      include: { reservation: true, user: true, student: true },
+  async findByShift(shiftId: string, date?: string) {
+    const where: {
+      shiftId: string;
+      createdAt?: { gte: Date; lte: Date };
+    } = { shiftId };
+
+    if (date) {
+      const { start, end } = localDayRange(date);
+      where.createdAt = { gte: start, lte: end };
+    }
+
+    const rows = await this.prisma.attendance.findMany({
+      where,
+      include: {
+        reservation: true,
+        user: true,
+        student: { include: { category: true, branch: true } },
+        shift: true,
+      },
+      orderBy: { createdAt: 'desc' },
     });
+    return this.enrichWithVerifier(rows);
   }
 
-  async findByDate(date: string | Date) {
+  async findByDate(date: string | Date, teacherId?: string) {
     const { start, end } = localDayRange(date);
 
-    return this.prisma.attendance.findMany({
-      where: { createdAt: { gte: start, lte: end } },
+    const rows = await this.prisma.attendance.findMany({
+      where: {
+        createdAt: { gte: start, lte: end },
+        ...(teacherId ? { verifiedBy: teacherId } : {}),
+      },
       include: {
         reservation: true,
         shift: true,
         user: true,
-        student: { include: { category: true } },
+        student: { include: { category: true, branch: true } },
       },
+      orderBy: [{ shift: { name: 'asc' } }, { student: { lastName: 'asc' } }],
     });
+    return this.enrichWithVerifier(rows);
   }
 
   async findOne(id: string) {
@@ -231,7 +289,8 @@ export class AttendancesService {
       },
     });
     if (!attendance) throw new NotFoundException('Asistencia no encontrada');
-    return attendance;
+    const [enriched] = await this.enrichWithVerifier([attendance]);
+    return enriched;
   }
 
   async markPresent(id: string, actorId: string) {

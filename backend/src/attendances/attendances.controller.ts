@@ -45,17 +45,28 @@ export class AttendancesController {
   }
 
   @Get()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.COLLECTOR,
+    UserRole.TEACHER,
+    UserRole.PARENT,
+  )
   @ApiOperation({ summary: 'Obtener todas las asistencias' })
   findAll(
     @Query('date') date?: string,
     @Query('studentId') studentId?: string,
+    @Query('teacherId') teacherId?: string,
+    @Query('shiftId') shiftId?: string,
   ) {
     if (date && studentId) {
       return this.attendancesService.findByDateAndStudent(date, studentId);
     }
+    if (date && shiftId) {
+      return this.attendancesService.findByShift(shiftId, date);
+    }
     if (date) {
-      return this.attendancesService.findByDate(date);
+      return this.attendancesService.findByDate(date, teacherId);
     }
     return this.attendancesService.findAll();
   }

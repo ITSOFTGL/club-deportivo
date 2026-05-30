@@ -1,16 +1,83 @@
 import api from '@/lib/axios';
 import type { TeacherAssignment } from './teacher-assignments';
 
-export interface TeacherShiftOption {
-  id: string;
-  name: string;
+export interface TeacherSlot {
+  assignmentId: string;
+  categoryShiftId: string;
+  categoryId: string;
+  branchId: string;
+  shiftId: string;
+  label: string;
+  categoryName: string;
+  branchName: string;
+  shiftName: string;
+  daysOfWeek: string;
   startTime: string;
   endTime: string;
 }
 
-export interface TeacherCategoryOption {
-  id: string;
-  name: string;
+function formatDaysShort(raw?: string): string {
+  if (!raw) return '';
+  const map: Record<string, string> = {
+    LUNES: 'Lun',
+    LUN: 'Lun',
+    MARTES: 'Mar',
+    MAR: 'Mar',
+    MIERCOLES: 'Mié',
+    MIE: 'Mié',
+    JUEVES: 'Jue',
+    JUE: 'Jue',
+    VIERNES: 'Vie',
+    VIE: 'Vie',
+    SABADO: 'Sáb',
+    SAB: 'Sáb',
+    DOMINGO: 'Dom',
+    DOM: 'Dom',
+  };
+  return raw
+    .toUpperCase()
+    .split(/[,;\s]+/)
+    .map((p) => map[p.trim()] || p.trim())
+    .filter(Boolean)
+    .join(', ');
+}
+
+export function buildTeacherSlots(
+  assignments: TeacherAssignment[],
+): TeacherSlot[] {
+  return assignments
+    .filter((a) => a.isActive && a.categoryShift)
+    .map((a) => {
+      const cs = a.categoryShift!;
+      const days = formatDaysShort(cs.daysOfWeek);
+      const time =
+        cs.startTime && cs.endTime
+          ? `${cs.startTime}–${cs.endTime}`
+          : cs.shift?.startTime && cs.shift?.endTime
+            ? `${cs.shift.startTime}–${cs.shift.endTime}`
+            : '';
+      const categoryName = cs.category?.name ?? 'Categoría';
+      const branchName = cs.branch?.name ?? 'Sucursal';
+      const shiftName = cs.shift?.name ?? cs.name ?? 'Turno';
+
+      return {
+        assignmentId: a.id,
+        categoryShiftId: cs.id,
+        categoryId: cs.category?.id ?? '',
+        branchId: cs.branch?.id ?? '',
+        shiftId: cs.shift?.id ?? '',
+        categoryName,
+        branchName,
+        shiftName,
+        daysOfWeek: cs.daysOfWeek ?? '',
+        startTime: cs.startTime ?? cs.shift?.startTime ?? '',
+        endTime: cs.endTime ?? cs.shift?.endTime ?? '',
+        label: `${categoryName} · ${branchName} · ${days} ${time}`.replace(
+          /\s+/g,
+          ' ',
+        ).trim(),
+      };
+    });
 }
 
 export async function fetchTeacherAssignments(teacherId: string) {
@@ -19,57 +86,66 @@ export async function fetchTeacherAssignments(teacherId: string) {
   >;
 }
 
-export async function fetchTeacherStudents(teacherId: string) {
-  return api.get('/students') as Promise<
+export async function fetchTeacherStudents(
+  teacherId: string,
+  categoryShiftId: string,
+) {
+  const q = new URLSearchParams({ categoryShiftId });
+  return api.get(`/students?${q.toString()}`) as Promise<
     Array<{
       id: string;
       name: string;
       lastName: string;
       categoryId: string;
+      branchId: string;
       category?: { id: string; name: string };
-      branch?: { name: string };
+      branch?: { id: string; name: string };
       birthDate?: string;
       documentId?: string;
+      membershipPaidUntil?: string | null;
+      membershipActive?: boolean;
+      membershipStatus?: string;
+      membershipLabel?: string;
     }>
   >;
 }
 
-export function parseTeacherContext(assignments: TeacherAssignment[]) {
-  const categoriesMap = new Map<string, TeacherCategoryOption>();
-  const shiftsByCategory = new Map<string, Map<string, TeacherShiftOption>>();
+export function buildTeacherSchedule(assignments: TeacherAssignment[]) {
+  return buildTeacherSlots(assignments).map((slot) => {
+    const a = assignments.find(
+      (x) => x.categoryShift?.id === slot.categoryShiftId,
+    );
+    return {
+      id: a?.id ?? slot.categoryShiftId,
+      categoryName: slot.categoryName,
+      shiftName: slot.shiftName,
+      branchName: slot.branchName,
+      role: a?.role ?? 'ASSISTANT',
+      isLeadTeacher: a?.isLeadTeacher ?? false,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      daysLabel: formatDaysShort(slot.daysOfWeek),
+    };
+  });
+}
 
-  for (const assignment of assignments) {
-    const cs = assignment.categoryShift;
-    if (!cs?.category || !cs?.shift) continue;
-
-    categoriesMap.set(cs.category.id, {
-      id: cs.category.id,
-      name: cs.category.name,
-    });
-
-    if (!shiftsByCategory.has(cs.category.id)) {
-      shiftsByCategory.set(cs.category.id, new Map());
-    }
-    shiftsByCategory.get(cs.category.id)!.set(cs.shift.id, {
-      id: cs.shift.id,
-      name: cs.shift.name,
-      startTime: cs.shift.startTime ?? '',
-      endTime: cs.shift.endTime ?? '',
-    });
-  }
-
-  return {
-    categories: Array.from(categoriesMap.values()),
-    shiftsByCategory,
-    schedule: assignments.map((a) => ({
-      id: a.id,
-      categoryName: a.categoryShift?.category?.name ?? '—',
-      shiftName: a.categoryShift?.shift?.name ?? '—',
-      branchName: a.categoryShift?.branch?.name ?? '—',
-      role: a.role,
-      isLeadTeacher: a.isLeadTeacher,
-      startTime: a.categoryShift?.shift?.startTime,
-      endTime: a.categoryShift?.shift?.endTime,
-    })),
-  };
+export async function fetchTeacherGuardians(categoryShiftId: string) {
+  return api.get(
+    `/guardians?categoryShiftId=${encodeURIComponent(categoryShiftId)}`,
+  ) as Promise<
+    Array<{
+      id: string;
+      name: string;
+      lastName: string;
+      phone: string;
+      email?: string;
+      relationship: string;
+      student?: {
+        name: string;
+        lastName: string;
+        category?: { name: string };
+        branch?: { name: string };
+      };
+    }>
+  >;
 }

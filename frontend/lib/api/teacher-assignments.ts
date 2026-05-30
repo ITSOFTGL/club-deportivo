@@ -19,6 +19,9 @@ export interface TeacherAssignment {
   categoryShift?: {
     id: string;
     name: string;
+    daysOfWeek?: string;
+    startTime?: string;
+    endTime?: string;
     category?: { id: string; name: string };
     shift?: { id: string; name: string; startTime?: string; endTime?: string };
     branch?: { id: string; name: string };

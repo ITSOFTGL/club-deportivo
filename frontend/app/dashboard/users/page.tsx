@@ -18,6 +18,7 @@ import { UserFormModal } from '@/components/users/UserFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { User, CreateUserDto } from '@/lib/api/users';
 import toast from 'react-hot-toast';
+import { requirePassword } from '@/lib/utils/password';
 
 const roleColors: Record<string, string> = {
   SUPER_ADMIN: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
@@ -117,14 +118,19 @@ export default function UsersPage() {
   };
 
   const handleResetPassword = async (userId: string) => {
-    const newPassword = prompt('Ingrese la nueva contraseña (mínimo 6 caracteres):');
-    if (newPassword && newPassword.length >= 6) {
-      setResettingPassword(userId);
-      const success = await resetPassword(userId, newPassword);
-      setResettingPassword(null);
-    } else if (newPassword) {
-      toast.error('La contraseña debe tener al menos 6 caracteres');
+    const newPassword = prompt(
+      'Nueva contraseña:\n(mín. 8 caracteres, 1 mayúscula, 2 números, 1 especial)',
+    );
+    if (!newPassword) return;
+    const err = requirePassword(newPassword);
+    if (err) {
+      toast.error(err);
+      return;
     }
+    setResettingPassword(userId);
+    const success = await resetPassword(userId, newPassword);
+    setResettingPassword(null);
+    if (success) toast.success('Contraseña actualizada');
   };
 
   const handleChangeRole = async (userId: string, currentRole: string) => {

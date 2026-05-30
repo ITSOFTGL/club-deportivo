@@ -11,20 +11,63 @@ import {
   DocumentTextIcon,
   ArrowDownTrayIcon,
   PhoneIcon,
+  BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 import { useReportsStore } from '@/store/reportsStore';
-import reportsApi from '@/lib/api/reports';
-import { exportRowsToPdf, formatDateBo } from '@/lib/exportPdf';
+import reportsApi, { type ReportFilters } from '@/lib/api/reports';
+import {
+  exportRowsToPdf,
+  exportRowsToCsv,
+  formatDateBo,
+} from '@/lib/exportPdf';
+import { useBranchesStore } from '@/store/branchesStore';
+import { useCategoriesStore } from '@/store/categoriesStore';
 import toast from 'react-hot-toast';
 
 export default function ReportsPage() {
   const { dashboard, loading, fetchDashboard } = useReportsStore();
+  const { branches, fetchBranches } = useBranchesStore();
+  const { categories, fetchCategories } = useCategoriesStore();
   const [parentSearch, setParentSearch] = useState('');
+  const [branchId, setBranchId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [exporting, setExporting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboard();
+    fetchBranches();
+    fetchCategories();
   }, []);
+
+  const filters = (): ReportFilters => ({
+    branchId: branchId || undefined,
+    categoryId: categoryId || undefined,
+    from: dateFrom || undefined,
+    to: dateTo || undefined,
+    search: parentSearch || undefined,
+  });
+
+  const filterSubtitle = () => {
+    const parts: string[] = [];
+    if (branchId) {
+      parts.push(
+        `Sucursal: ${branches.find((b) => b.id === branchId)?.name ?? branchId}`,
+      );
+    }
+    if (categoryId) {
+      parts.push(
+        `Categoría: ${categories.find((c) => c.id === categoryId)?.name ?? categoryId}`,
+      );
+    }
+    if (dateFrom || dateTo) {
+      parts.push(
+        `Periodo: ${dateFrom ? formatDateBo(dateFrom) : '…'} – ${dateTo ? formatDateBo(dateTo) : '…'}`,
+      );
+    }
+    return parts.join(' · ') || undefined;
+  };
 
   const runExport = async (
     key: string,
@@ -32,15 +75,23 @@ export default function ReportsPage() {
     headers: string[],
     loader: () => Promise<Record<string, unknown>[]>,
     mapRow: (row: Record<string, unknown>) => (string | number | null | undefined)[],
+    format: 'pdf' | 'csv' = 'pdf',
   ) => {
     setExporting(key);
     try {
       const data = await loader();
-      exportRowsToPdf(
-        title,
-        headers,
-        data.map(mapRow),
-      );
+      const rows = data.map(mapRow);
+      const sub = filterSubtitle();
+      if (format === 'csv') {
+        exportRowsToCsv(
+          `${key}-${new Date().toISOString().slice(0, 10)}.csv`,
+          headers,
+          rows,
+        );
+      } else {
+        exportRowsToPdf(title, headers, rows, sub);
+      }
+      toast.success('Reporte generado');
     } catch {
       toast.error('No se pudo generar el reporte');
     } finally {
@@ -108,10 +159,10 @@ export default function ReportsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <ChartBarIcon className="w-8 h-8 text-[#7c0613]" />
-          Reportes
+          Reportes del club
         </h1>
         <p className="text-gray-500 mt-1">
-          Resumen y exportación PDF (imprimir → Guardar como PDF)
+          Filtre por sucursal y categoría. Exporte PDF (imprimir → Guardar como PDF) o Excel (CSV).
         </p>
       </div>
 
@@ -148,18 +199,229 @@ export default function ReportsPage() {
 
           <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
             <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+              <BuildingOffice2Icon className="w-5 h-5 text-[#7c0613]" />
+              Filtros de exportación
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <select
+                value={branchId}
+                onChange={(e) => setBranchId(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm"
+              >
+                <option value="">Todas las sucursales</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm"
+              >
+                <option value="">Todas las categorías</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm"
+                title="Desde"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm"
+                title="Hasta"
+              />
+            </div>
+
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2 pt-2">
               <ArrowDownTrayIcon className="w-5 h-5 text-[#7c0613]" />
               Exportar reportes
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <button
-                type="button"
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <ExportButton
+                label="Mensualidades (PDF)"
+                loading={exporting === 'membership-pdf'}
+                disabled={exporting !== null}
+                onClick={() =>
+                  runExport(
+                    'membership-pdf',
+                    'Estado de mensualidades',
+                    [
+                      'Sucursal',
+                      'Categoría',
+                      'Alumno',
+                      'Apoderado',
+                      'Teléfono',
+                      'Estado',
+                      'Vence',
+                      'Último pago',
+                      'Al día',
+                    ],
+                    () => reportsApi.exportMembership(filters()),
+                    (r) => [
+                      String(r.sucursal),
+                      String(r.categoria),
+                      String(r.alumno),
+                      String(r.apoderado),
+                      String(r.telefono),
+                      String(r.estadoMensualidad),
+                      formatDateBo(r.vence as string),
+                      formatDateBo(r.ultimoPago as string),
+                      r.alDia ? 'Sí' : 'No',
+                    ],
+                  )
+                }
+              />
+              <ExportButton
+                label="Mensualidades (CSV)"
+                loading={exporting === 'membership-csv'}
+                disabled={exporting !== null}
+                onClick={() =>
+                  runExport(
+                    'membership-csv',
+                    'Mensualidades',
+                    [
+                      'Sucursal',
+                      'Categoría',
+                      'Alumno',
+                      'Apoderado',
+                      'Teléfono',
+                      'Estado',
+                      'Vence',
+                      'Último pago',
+                      'Al día',
+                    ],
+                    () => reportsApi.exportMembership(filters()),
+                    (r) => [
+                      String(r.sucursal),
+                      String(r.categoria),
+                      String(r.alumno),
+                      String(r.apoderado),
+                      String(r.telefono),
+                      String(r.estadoMensualidad),
+                      formatDateBo(r.vence as string),
+                      formatDateBo(r.ultimoPago as string),
+                      r.alDia ? 'Sí' : 'No',
+                    ],
+                    'csv',
+                  )
+                }
+              />
+              <ExportButton
+                label="Apoderados (PDF)"
+                loading={exporting === 'parents'}
+                disabled={exporting !== null}
+                onClick={() =>
+                  runExport(
+                    'parents',
+                    'Apoderados y contactos',
+                    [
+                      'Apoderado',
+                      'Teléfono',
+                      'Email',
+                      'Hijo/a',
+                      'Categoría',
+                      'Sucursal',
+                    ],
+                    () => reportsApi.exportParents(filters()),
+                    (r) => [
+                      String(r.apoderado),
+                      String(r.telefono),
+                      String(r.email),
+                      String(r.hijo),
+                      String(r.categoria),
+                      String(r.sucursal),
+                    ],
+                  )
+                }
+              />
+              <ExportButton
+                label="Alumnos (PDF)"
+                loading={exporting === 'students'}
+                disabled={exporting !== null}
+                onClick={() =>
+                  runExport(
+                    'students',
+                    'Alumnos por categoría y sucursal',
+                    [
+                      'Sucursal',
+                      'Categoría',
+                      'Alumno',
+                      'Apoderado',
+                      'Teléfono',
+                      'Mensualidad hasta',
+                      'Al día',
+                    ],
+                    () => reportsApi.exportCategoriesStudents(filters()),
+                    (r) => [
+                      String(r.sucursal),
+                      String(r.categoria),
+                      String(r.alumno),
+                      String(r.padre),
+                      String(r.telefonoPadre),
+                      formatDateBo(r.mensualidadHasta as string),
+                      r.alDia ? 'Sí' : 'No',
+                    ],
+                  )
+                }
+              />
+              <ExportButton
+                label="Profesores (PDF)"
+                loading={exporting === 'teachers'}
+                disabled={exporting !== null}
+                onClick={() =>
+                  runExport(
+                    'teachers',
+                    'Profesores y horarios asignados',
+                    [
+                      'Nombre',
+                      'Teléfono',
+                      'Email',
+                      'Categoría',
+                      'Sucursal',
+                      'Días',
+                      'Horario',
+                    ],
+                    reportsApi.exportTeachers,
+                    (r) => [
+                      String(r.nombre),
+                      String(r.telefono),
+                      String(r.email),
+                      String(r.categoria),
+                      String(r.sucursal),
+                      String(r.dias),
+                      String(r.horario),
+                    ],
+                  )
+                }
+              />
+              <ExportButton
+                label="Pagos (PDF)"
+                loading={exporting === 'payments'}
                 disabled={exporting !== null}
                 onClick={() =>
                   runExport(
                     'payments',
                     'Pagos registrados',
-                    ['Alumno', 'Categoría', 'Monto', 'Método', 'Estado', 'Fecha', 'Vence'],
+                    [
+                      'Alumno',
+                      'Categoría',
+                      'Monto',
+                      'Método',
+                      'Estado',
+                      'Fecha',
+                      'Vence',
+                    ],
                     reportsApi.exportPayments,
                     (r) => [
                       String(r.alumno),
@@ -172,82 +434,7 @@ export default function ReportsPage() {
                     ],
                   )
                 }
-                className="p-4 border rounded-lg hover:border-[#7c0613] text-left text-sm"
-              >
-                {exporting === 'payments' ? 'Generando...' : 'Pagos (PDF)'}
-              </button>
-              <button
-                type="button"
-                disabled={exporting !== null}
-                onClick={() =>
-                  runExport(
-                    'teachers',
-                    'Profesores y asignaciones',
-                    ['Nombre', 'Email', 'Teléfono', 'Asignaciones'],
-                    reportsApi.exportTeachers,
-                    (r) => [
-                      String(r.nombre),
-                      String(r.email),
-                      String(r.telefono),
-                      String(r.asignaciones),
-                    ],
-                  )
-                }
-                className="p-4 border rounded-lg hover:border-[#7c0613] text-left text-sm"
-              >
-                {exporting === 'teachers' ? 'Generando...' : 'Profesores (PDF)'}
-              </button>
-              <button
-                type="button"
-                disabled={exporting !== null}
-                onClick={() =>
-                  runExport(
-                    'students',
-                    'Alumnos por categoría',
-                    [
-                      'Categoría',
-                      'Alumno',
-                      'Padre',
-                      'Teléfono',
-                      'Mensualidad hasta',
-                      'Al día',
-                    ],
-                    reportsApi.exportCategoriesStudents,
-                    (r) => [
-                      String(r.categoria),
-                      String(r.alumno),
-                      String(r.padre),
-                      String(r.telefonoPadre),
-                      formatDateBo(r.mensualidadHasta as string),
-                      r.alDia ? 'Sí' : 'No',
-                    ],
-                  )
-                }
-                className="p-4 border rounded-lg hover:border-[#7c0613] text-left text-sm"
-              >
-                {exporting === 'students' ? 'Generando...' : 'Categorías + alumnos'}
-              </button>
-              <button
-                type="button"
-                disabled={exporting !== null}
-                onClick={() =>
-                  runExport(
-                    'parents',
-                    'Padres de familia',
-                    ['Nombre', 'Email', 'Teléfono', 'Hijos'],
-                    () => reportsApi.exportParents(parentSearch || undefined),
-                    (r) => [
-                      String(r.nombre),
-                      String(r.email),
-                      String(r.telefono),
-                      String(r.hijos),
-                    ],
-                  )
-                }
-                className="p-4 border rounded-lg hover:border-[#7c0613] text-left text-sm"
-              >
-                {exporting === 'parents' ? 'Generando...' : 'Padres / teléfonos'}
-              </button>
+              />
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t">
@@ -257,7 +444,7 @@ export default function ReportsPage() {
                   type="text"
                   value={parentSearch}
                   onChange={(e) => setParentSearch(e.target.value)}
-                  placeholder="Buscar padre por nombre, teléfono o email..."
+                  placeholder="Buscar apoderado por nombre, teléfono o email..."
                   className="w-full pl-10 pr-4 py-2 border rounded-lg"
                 />
               </div>
@@ -265,14 +452,13 @@ export default function ReportsPage() {
                 type="button"
                 onClick={async () => {
                   try {
-                    const rows = await reportsApi.exportParents(
-                      parentSearch || undefined,
-                    );
-                    const match = rows.find((r) =>
-                      String(r.telefono ?? '').includes(
-                        parentSearch.replace(/\D/g, ''),
-                      ),
-                    ) || rows[0];
+                    const rows = await reportsApi.exportParents(filters());
+                    const match =
+                      rows.find((r) =>
+                        String(r.telefono ?? '').includes(
+                          parentSearch.replace(/\D/g, ''),
+                        ),
+                      ) || rows[0];
                     const wa = match?.whatsapp ? String(match.whatsapp) : '';
                     if (wa) {
                       window.open(wa, '_blank');
@@ -338,5 +524,28 @@ export default function ReportsPage() {
         </>
       )}
     </motion.div>
+  );
+}
+
+function ExportButton({
+  label,
+  onClick,
+  loading,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  loading: boolean;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="p-4 border rounded-lg hover:border-[#7c0613] text-left text-sm disabled:opacity-50"
+    >
+      {loading ? 'Generando...' : label}
+    </button>
   );
 }

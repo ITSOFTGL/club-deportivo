@@ -22,6 +22,7 @@ export interface Guardian {
 
 export interface CreateGuardianDto {
   studentId: string;
+  additionalStudentIds?: string[];
   name: string;
   lastName: string;
   documentId: string;
@@ -29,6 +30,8 @@ export interface CreateGuardianDto {
   email?: string;
   relationship: 'PADRE' | 'MADRE' | 'TUTOR' | 'ABUELO' | 'OTRO';
   isPrimary?: boolean;
+  createUserAccount?: boolean;
+  password?: string;
 }
 
 export interface UpdateGuardianDto extends Partial<CreateGuardianDto> {

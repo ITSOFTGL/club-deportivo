@@ -1,4 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { validatePassword } from '../common/utils/password.util';
+import { UserRole, UserStatus, Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGuardianDto } from './dto/create-guardian.dto';
 import { UpdateGuardianDto } from './dto/update-guardian.dto';
@@ -7,32 +15,148 @@ import { UpdateGuardianDto } from './dto/update-guardian.dto';
 export class GuardiansService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  private get prisma() {
+    return this.prismaService.prisma;
+  }
+
   async create(createDto: CreateGuardianDto) {
-    return this.prismaService.prisma.guardian.create({
-      data: {
-        ...createDto,
-        isPrimary: createDto.isPrimary ?? false,
-      },
-      include: { student: true },
-    });
+    const studentIds = [
+      createDto.studentId,
+      ...(createDto.additionalStudentIds ?? []),
+    ].filter((id, i, arr) => id && arr.indexOf(id) === i);
+
+    for (const sid of studentIds) {
+      const student = await this.prisma.student.findUnique({
+        where: { id: sid },
+      });
+      if (!student) throw new NotFoundException(`Alumno ${sid} no encontrado`);
+    }
+
+    let parentUserId: string | undefined;
+
+    if (createDto.createUserAccount) {
+      if (!createDto.email?.trim()) {
+        throw new BadRequestException(
+          'El correo es obligatorio para crear cuenta de acceso',
+        );
+      }
+      if (!createDto.password) {
+        throw new BadRequestException(
+          'La contraseña es obligatoria para crear cuenta de acceso',
+        );
+      }
+      const pwdCheck = validatePassword(createDto.password);
+      if (!pwdCheck.valid) {
+        throw new BadRequestException(pwdCheck.message);
+      }
+
+      const exists = await this.prisma.user.findUnique({
+        where: { email: createDto.email.trim() },
+      });
+      if (exists) throw new ConflictException('El correo ya está registrado');
+
+      const docExists = await this.prisma.user.findUnique({
+        where: { documentId: createDto.documentId },
+      });
+      if (docExists) {
+        throw new ConflictException('El documento ya está registrado como usuario');
+      }
+
+      const hashed = await bcrypt.hash(createDto.password, 10);
+      const user = await this.prisma.user.create({
+        data: {
+          email: createDto.email.trim(),
+          password: hashed,
+          name: createDto.name,
+          lastName: createDto.lastName,
+          phone: createDto.phone,
+          documentId: createDto.documentId,
+          role: UserRole.PARENT,
+          status: UserStatus.ACTIVE,
+          approvalStatus: 'APPROVED',
+        },
+      });
+      parentUserId = user.id;
+    }
+
+    type CreatedGuardian = Prisma.GuardianGetPayload<{
+      include: { student: true };
+    }>;
+    const created: CreatedGuardian[] = [];
+    for (let i = 0; i < studentIds.length; i++) {
+      const sid = studentIds[i];
+      const guardian = await this.prisma.guardian.create({
+        data: {
+          studentId: sid,
+          name: createDto.name,
+          lastName: createDto.lastName,
+          documentId:
+            studentIds.length === 1
+              ? createDto.documentId
+              : `${createDto.documentId}-${i + 1}`,
+          phone: createDto.phone,
+          email: createDto.email,
+          relationship: createDto.relationship,
+          isPrimary: createDto.isPrimary ?? false,
+        },
+        include: { student: true },
+      });
+      created.push(guardian);
+
+      if (parentUserId) {
+        await this.prisma.student.update({
+          where: { id: sid },
+          data: { parentId: parentUserId },
+        });
+      }
+    }
+
+    return {
+      ...created[0],
+      linkedStudents: studentIds.length,
+      userAccountCreated: Boolean(parentUserId),
+    };
   }
 
   async findAll() {
-    return this.prismaService.prisma.guardian.findMany({
+    return this.prisma.guardian.findMany({
       where: { isActive: true },
-      include: { student: true },
+      include: { student: { include: { category: true, branch: true } } },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
   async findByStudent(studentId: string) {
-    return this.prismaService.prisma.guardian.findMany({
+    return this.prisma.guardian.findMany({
       where: { studentId, isActive: true },
-      include: { student: true },
+      include: { student: { include: { category: true, branch: true } } },
+    });
+  }
+
+  async findByCategoryShiftScope(categoryShiftId: string) {
+    const cs = await this.prisma.categoryShift.findUnique({
+      where: { id: categoryShiftId },
+    });
+    if (!cs) throw new NotFoundException('Grupo no encontrado');
+
+    return this.prisma.guardian.findMany({
+      where: {
+        isActive: true,
+        student: {
+          status: 'ACTIVE',
+          categoryId: cs.categoryId,
+          branchId: cs.branchId,
+        },
+      },
+      include: {
+        student: { include: { category: true, branch: true } },
+      },
+      orderBy: [{ student: { lastName: 'asc' } }, { name: 'asc' }],
     });
   }
 
   async findOne(id: string) {
-    const guardian = await this.prismaService.prisma.guardian.findUnique({
+    const guardian = await this.prisma.guardian.findUnique({
       where: { id },
       include: { student: true },
     });
@@ -42,7 +166,7 @@ export class GuardiansService {
 
   async update(id: string, updateDto: UpdateGuardianDto) {
     await this.findOne(id);
-    return this.prismaService.prisma.guardian.update({
+    return this.prisma.guardian.update({
       where: { id },
       data: updateDto,
       include: { student: true },
@@ -51,7 +175,7 @@ export class GuardiansService {
 
   async remove(id: string) {
     await this.findOne(id);
-    return this.prismaService.prisma.guardian.update({
+    return this.prisma.guardian.update({
       where: { id },
       data: { isActive: false },
     });

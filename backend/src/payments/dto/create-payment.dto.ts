@@ -34,6 +34,11 @@ export class CreatePaymentDto {
   @IsDateString()
   paymentDate?: string;
 
+  /** Fecha de vencimiento actual desde la cual sumar meses (mes calendario). */
+  @IsOptional()
+  @IsDateString()
+  extendFromDate?: string;
+
   @IsOptional()
   @IsString()
   proofUrl?: string;

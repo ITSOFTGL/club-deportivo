@@ -5,6 +5,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { TeacherAssignment, CreateTeacherAssignmentDto } from '@/lib/api/teacher-assignments';
+import { formatCategoryShiftLabel, type CategoryShift } from '@/lib/api/category-shifts';
 
 interface Teacher {
   id: string;
@@ -13,12 +14,6 @@ interface Teacher {
   email: string;
 }
 
-interface CategoryShift {
-  id: string;
-  name: string;
-  category?: { name: string };
-  shift?: { name: string };
-}
 
 interface TeacherAssignmentFormModalProps {
   isOpen: boolean;
@@ -152,7 +147,7 @@ export function TeacherAssignmentFormModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Categoría / Turno *
+                      Grupo (categoría + sucursal + días y horario) *
                     </label>
                     <select
                       value={formData.categoryShiftId}
@@ -168,9 +163,7 @@ export function TeacherAssignmentFormModal({
                       ) : (
                         categoryShifts.map((cs) => (
                           <option key={cs.id} value={cs.id}>
-                            {cs.category?.name
-                              ? `${cs.category.name} — ${cs.shift?.name ?? cs.name}`
-                              : cs.name}
+                            {formatCategoryShiftLabel(cs as CategoryShift)}
                           </option>
                         ))
                       )}

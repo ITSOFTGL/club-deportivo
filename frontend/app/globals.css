@@ -2,12 +2,10 @@
 @import "tailwindcss";
 
 @theme {
-  /* Colores personalizados del club */
   --color-club: #7c0613;
   --color-club-dark: #4a030b;
   --color-club-light: #9e1a2a;
-  
-  /* Colores base */
+
   --color-gray-50: #f9fafb;
   --color-gray-100: #f3f4f6;
   --color-gray-200: #e5e7eb;
@@ -18,35 +16,100 @@
   --color-gray-700: #374151;
   --color-gray-800: #1f2937;
   --color-gray-900: #111827;
-  
+
   --color-white: #ffffff;
   --color-black: #000000;
 }
 
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply antialiased text-gray-900 bg-gray-50;
+    font-feature-settings: 'kern' 1;
+  }
+
+  /* Evita zoom automático en inputs en iOS */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  @media (min-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: inherit;
+    }
+  }
+}
+
 @layer components {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .app-shell {
+    @apply min-h-[100dvh] bg-gray-50;
+  }
+
+  /* Login y pantallas centradas */
+  .app-shell-center {
+    @apply min-h-[100dvh] flex flex-col items-center justify-center bg-gray-50;
+  }
+
+  /* Dashboard: grid sidebar + contenido (PC) */
+  .dashboard-shell {
+    @apply grid h-dvh w-full overflow-hidden bg-gray-50 md:grid-cols-[auto_1fr];
+  }
+
+  .page-container {
+    @apply mx-auto w-full max-w-7xl;
+  }
+
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .input-app {
+    @apply w-full px-4 py-3 rounded-xl border border-gray-300 bg-white text-gray-900
+      placeholder:text-gray-400
+      focus:outline-none focus:ring-2 focus:ring-[#7c0613]/40 focus:border-[#7c0613]
+      transition-shadow;
+  }
+
+  .card-app {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden;
+  }
+
   .btn-club {
-    background: linear-gradient(135deg, var(--color-club) 0%, var(--color-club-dark) 100%);
-    color: white;
-    font-weight: 600;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    transition: all 0.2s;
+    @apply inline-flex items-center justify-center font-semibold text-white rounded-xl px-4 py-3
+      min-h-[44px] min-w-[44px]
+      bg-gradient-to-r from-[#7c0613] to-[#4a030b]
+      hover:opacity-95 active:scale-[0.98] transition-all shadow-md;
   }
-  
-  .btn-club:hover {
-    opacity: 0.9;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+  .table-scroll {
+    @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
   }
-  
-  .card-club {
-    background-color: white;
-    border-radius: 0.75rem;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--color-gray-200);
+
+  .stat-card {
+    @apply rounded-2xl p-4 text-white shadow-lg;
   }
-  
-  .dark .card-club {
-    background-color: var(--color-gray-800);
-    border-color: var(--color-gray-700);
+
+  .page-title {
+    @apply text-xl sm:text-2xl font-bold text-gray-900 tracking-tight;
+  }
+
+  .page-subtitle {
+    @apply text-sm text-gray-500 mt-0.5;
   }
 }

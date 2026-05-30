@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import MobileBottomNav from '@/components/layout/MobileBottomNav';
 
 export default function DashboardLayout({
   children,
@@ -20,22 +21,24 @@ export default function DashboardLayout({
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-    
+
+    const mq = window.matchMedia('(max-width: 767px)');
+
     const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
+      const mobile = mq.matches;
       setIsMobile(mobile);
-      if (mobile) setSidebarOpen(false);
+      setSidebarOpen(!mobile);
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    mq.addEventListener('change', checkMobile);
+    return () => mq.removeEventListener('change', checkMobile);
   }, [status, router]);
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="app-shell-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7c0613]" />
       </div>
     );
   }
@@ -43,14 +46,36 @@ export default function DashboardLayout({
   if (!session) return null;
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} isMobile={isMobile} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {children}
-        </main>
+    <div className="relative h-dvh w-full overflow-hidden bg-gray-50">
+      {isMobile && sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Cerrar menú"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden border-0 cursor-default"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className="grid h-full w-full grid-cols-1 md:grid-cols-[auto_1fr]">
+        <Sidebar
+          isOpen={sidebarOpen}
+          setIsOpen={setSidebarOpen}
+          isMobile={isMobile}
+        />
+
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <Header
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            isMobile={isMobile}
+          />
+          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pb-20 md:p-6 md:pb-6">
+            <div className="mx-auto w-full max-w-7xl">{children}</div>
+          </main>
+        </div>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 }

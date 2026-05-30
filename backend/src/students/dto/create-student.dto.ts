@@ -64,8 +64,9 @@ export class CreateStudentDto {
   @IsString()
   grade?: string;
 
+  @IsOptional()
   @IsString()
-  parentId!: string;
+  parentId?: string;
 
   @IsString()
   branchId!: string;

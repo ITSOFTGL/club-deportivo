@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MagnifyingGlassIcon, 
@@ -12,7 +13,8 @@ import {
   CalendarIcon,
   BuildingOfficeIcon,
   AcademicCapIcon,
-  UserIcon
+  UserIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 import { useStudentsStore } from '@/store/studentsStore';
 import { useBranchesStore } from '@/store/branchesStore';
@@ -20,6 +22,8 @@ import { useCategoriesStore } from '@/store/categoriesStore';
 import { useUsersStore } from '@/store/usersStore';
 import { StudentFormModal } from '@/components/students/StudentFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
+
+import { getMembershipBadge } from '@/lib/utils/membership';
 
 interface Parent {
   id: string;
@@ -29,6 +33,7 @@ interface Parent {
 }
 
 export default function StudentsPage() {
+  const router = useRouter();
   const { students, loading, searchTerm, setSearchTerm, fetchStudents, createStudent, updateStudent, deleteStudent } = useStudentsStore();
   const { branches, fetchBranches } = useBranchesStore();
   const { categories, fetchCategories } = useCategoriesStore();
@@ -102,10 +107,25 @@ export default function StudentsPage() {
     return new Date(date).toLocaleDateString('es-ES');
   };
 
-  const getParentName = (parentId: string) => {
-    const parent = parents.find(p => p.id === parentId);
-    return parent ? `${parent.name} ${parent.lastName}` : 'No asignado';
+  const getParentName = (student: { parentId?: string; parent?: { name: string; lastName: string }; guardians?: Array<{ name: string; lastName: string; isPrimary?: boolean }> }) => {
+    if (student.parent) {
+      return `${student.parent.name} ${student.parent.lastName}`;
+    }
+    const primary = student.guardians?.find((g) => g.isPrimary) ?? student.guardians?.[0];
+    if (primary) return `${primary.name} ${primary.lastName}`;
+    if (student.parentId) {
+      const parent = parents.find((p) => p.id === student.parentId);
+      return parent ? `${parent.name} ${parent.lastName}` : 'No asignado';
+    }
+    return 'Sin apoderado';
   };
+
+  const needsPayment = (student: { membershipStatus?: string; membershipActive?: boolean }) =>
+    !student.membershipActive ||
+    student.membershipStatus === 'NONE' ||
+    student.membershipStatus === 'EXPIRED';
+
+  const pendingPayment = students.filter(needsPayment);
 
   const getBranchName = (branchId: string) => {
     const branch = branches.find(b => b.id === branchId);
@@ -139,6 +159,27 @@ export default function StudentsPage() {
           Nuevo Alumno
         </button>
       </div>
+
+      {pendingPayment.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm font-medium text-amber-900 mb-2">
+            {pendingPayment.length} alumno(s) pendiente(s) de pago o mensualidad vencida
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {pendingPayment.slice(0, 8).map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => router.push(`/dashboard/payments?studentId=${s.id}`)}
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 bg-white border border-amber-300 rounded-full text-amber-900 hover:bg-amber-100"
+              >
+                <CreditCardIcon className="w-3.5 h-3.5" />
+                {s.name} {s.lastName} — Registrar pago
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -264,7 +305,7 @@ export default function StudentsPage() {
                       <td className="px-6 py-4">
                         <p className="text-sm text-gray-600 flex items-center">
                           <UserIcon className="w-4 h-4 mr-1 text-gray-400" />
-                          {getParentName(student.parentId)}
+                          {getParentName(student)}
                         </p>
                       </td>
                       <td className="px-6 py-4">
@@ -283,26 +324,31 @@ export default function StudentsPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        {(student as { membershipPaidUntil?: string }).membershipPaidUntil ? (
-                          <span
-                            className={`text-xs font-medium px-2 py-1 rounded-full ${
-                              (student as { membershipActive?: boolean }).membershipActive
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {(student as { membershipActive?: boolean }).membershipActive
-                              ? 'Al día hasta '
-                              : 'Venció '}
-                            {formatDate(
-                              (student as { membershipPaidUntil: string }).membershipPaidUntil,
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
-                            Sin pago registrado
-                          </span>
-                        )}
+                        {(() => {
+                          const badge = getMembershipBadge(student);
+                          const pending = needsPayment(student);
+                          return (
+                            <div className="flex flex-col gap-1 items-start">
+                              <span
+                                className={`text-xs font-medium px-2 py-1 rounded-full border ${badge.className}`}
+                              >
+                                {badge.text}
+                              </span>
+                              {pending && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    router.push(`/dashboard/payments?studentId=${student.id}`)
+                                  }
+                                  className="text-xs text-[#7c0613] font-semibold hover:underline inline-flex items-center gap-1"
+                                >
+                                  <CreditCardIcon className="w-3.5 h-3.5" />
+                                  Registrar pago
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

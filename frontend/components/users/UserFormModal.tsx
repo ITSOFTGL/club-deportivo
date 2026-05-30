@@ -4,6 +4,8 @@ import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { User, CreateUserDto } from '@/lib/api/users';
+import { PasswordField } from '@/components/ui/PasswordField';
+import { requirePassword } from '@/lib/utils/password';
 import toast from 'react-hot-toast';
 
 const roles = [
@@ -110,16 +112,16 @@ export function UserFormModal({
     // 1. Es un usuario NUEVO (obligatorio)
     // 2. Es un usuario EXISTENTE y se ingresó una nueva contraseña (opcional)
     if (!user) {
-      // Nuevo usuario - contraseña obligatoria
-      if (!formData.password || formData.password.length < 6) {
-        toast.error('La contraseña debe tener al menos 6 caracteres');
+      const err = requirePassword(formData.password);
+      if (err) {
+        toast.error(err);
         return;
       }
       dataToSend.password = formData.password;
     } else if (formData.password && formData.password.trim() !== '') {
-      // Usuario existente - solo enviar si se ingresó una nueva
-      if (formData.password.length < 6) {
-        toast.error('La contraseña debe tener al menos 6 caracteres');
+      const err = requirePassword(formData.password);
+      if (err) {
+        toast.error(err);
         return;
       }
       dataToSend.password = formData.password;
@@ -218,15 +220,13 @@ export function UserFormModal({
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Contraseña {!user && '*'}
-                      </label>
-                      <input
-                        type="password"
+                      <PasswordField
                         value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
-                        placeholder={user ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres'}
+                        onChange={(password) => setFormData({ ...formData, password })}
+                        label={`Contraseña${!user ? '' : ' (nueva)'}`}
+                        required={!user}
+                        showHints={!user || formData.password.length > 0}
+                        placeholder={user ? 'Dejar vacío para no cambiar' : 'Crear contraseña segura'}
                       />
                       {user && (
                         <p className="text-xs text-gray-500 mt-1">

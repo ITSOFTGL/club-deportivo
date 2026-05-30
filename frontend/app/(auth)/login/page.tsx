@@ -53,11 +53,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#7c0613] via-[#4a030b] to-[#2a0206] px-4 py-8">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-gradient-to-br from-[#7c0613] via-[#4a030b] to-[#2a0206] px-4 py-8 safe-top safe-bottom">
       <div className="absolute inset-0 bg-black/30 pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 w-full">
           <div className="text-center mb-8">
             <ClubLogo size="xl" className="justify-center" textPosition="bottom" showText />
             <p className="text-gray-500 mt-2 text-sm sm:text-base">
@@ -74,7 +74,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                className="input-app"
                 placeholder="correo@ejemplo.com"
                 autoComplete="email"
                 required
@@ -90,7 +90,7 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent pr-11"
+                  className="input-app pr-11"
                   placeholder="••••••••"
                   autoComplete="current-password"
                   required
@@ -113,7 +113,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#7c0613] to-[#4a030b] hover:from-[#8e0716] hover:to-[#5c040e] text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 shadow-lg"
+              className="w-full btn-club disabled:opacity-50"
             >
               {loading ? 'Ingresando...' : 'Ingresar'}
             </button>

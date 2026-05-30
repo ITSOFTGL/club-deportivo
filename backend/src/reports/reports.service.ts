@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { getMembershipStatus } from '../common/utils/membership.util';
+import { formatDaysOfWeek } from '../common/utils/schedule.util';
 
 const ACTIVE_STUDENT_STATUS = 'ACTIVE';
 
@@ -127,30 +129,72 @@ export class ReportsService {
       orderBy: { lastName: 'asc' },
     });
 
-    return teachers.map((t) => ({
-      nombre: `${t.name} ${t.lastName}`,
-      email: t.email,
-      telefono: t.phone ?? t.teacherProfile?.phone ?? '—',
-      asignaciones: t.teacherAssignments
-        .map(
-          (a) =>
-            `${a.categoryShift?.category?.name ?? '?'} / ${a.categoryShift?.shift?.name ?? '?'} (${a.categoryShift?.branch?.name ?? '?'})`,
-        )
-        .join('; ') || 'Sin asignación',
-    }));
+    const rows: Array<{
+      nombre: string;
+      telefono: string;
+      email: string;
+      categoria: string;
+      sucursal: string;
+      dias: string;
+      horario: string;
+    }> = [];
+
+    for (const t of teachers) {
+      const base = {
+        nombre: `${t.name} ${t.lastName}`,
+        telefono: t.phone ?? t.teacherProfile?.phone ?? '—',
+        email: t.email,
+      };
+      if (!t.teacherAssignments.length) {
+        rows.push({
+          ...base,
+          categoria: '—',
+          sucursal: '—',
+          dias: '—',
+          horario: '—',
+        });
+        continue;
+      }
+      for (const a of t.teacherAssignments) {
+        const cs = a.categoryShift;
+        if (!cs) {
+          rows.push({
+            ...base,
+            categoria: '—',
+            sucursal: '—',
+            dias: '—',
+            horario: '—',
+          });
+          continue;
+        }
+        rows.push({
+          ...base,
+          categoria: cs.category?.name ?? '—',
+          sucursal: cs.branch?.name ?? '—',
+          dias: formatDaysOfWeek(cs.daysOfWeek),
+          horario: `${cs.startTime} – ${cs.endTime}`,
+        });
+      }
+    }
+    return rows;
   }
 
-  async getCategoriesStudentsExport(categoryId?: string) {
+  async getCategoriesStudentsExport(
+    categoryId?: string,
+    branchId?: string,
+  ) {
     const prisma = this.prismaService.prisma;
     const students = await prisma.student.findMany({
       where: {
         status: ACTIVE_STUDENT_STATUS,
         ...(categoryId ? { categoryId } : {}),
+        ...(branchId ? { branchId } : {}),
       },
       include: {
         category: true,
         branch: true,
         parent: true,
+        guardians: { where: { isActive: true }, orderBy: { isPrimary: 'desc' } },
       },
       orderBy: [{ category: { name: 'asc' } }, { lastName: 'asc' }],
     });
@@ -179,13 +223,17 @@ export class ReportsService {
     const now = new Date();
     return students.map((s) => {
       const paidUntil = paidUntilMap.get(s.id);
+      const contact =
+        s.parent ??
+        s.guardians.find((g) => g.isPrimary) ??
+        s.guardians[0];
       return {
         categoria: s.category.name,
         sucursal: s.branch.name,
         alumno: `${s.name} ${s.lastName}`,
         nacimiento: s.birthDate,
-        padre: `${s.parent.name} ${s.parent.lastName}`,
-        telefonoPadre: s.parent.phone ?? '—',
+        padre: contact ? `${contact.name} ${contact.lastName}` : '—',
+        telefonoPadre: contact?.phone ?? '—',
         mensualidadHasta: paidUntil ?? null,
         alDia: paidUntil ? paidUntil >= now : false,
         descuento: s.discountPercent ?? 0,
@@ -193,12 +241,16 @@ export class ReportsService {
     });
   }
 
-  async getParentsContactsExport(search?: string) {
+  async getParentsContactsExport(
+    search?: string,
+    branchId?: string,
+    categoryId?: string,
+  ) {
     const prisma = this.prismaService.prisma;
-    const parents = await prisma.user.findMany({
+
+    const guardians = await prisma.guardian.findMany({
       where: {
-        role: 'PARENT',
-        status: 'ACTIVE',
+        isActive: true,
         ...(search
           ? {
               OR: [
@@ -209,26 +261,117 @@ export class ReportsService {
               ],
             }
           : {}),
-      },
-      include: {
-        children: {
-          where: { status: ACTIVE_STUDENT_STATUS },
-          include: { category: true },
+        student: {
+          status: ACTIVE_STUDENT_STATUS,
+          ...(branchId ? { branchId } : {}),
+          ...(categoryId ? { categoryId } : {}),
         },
       },
-      orderBy: { lastName: 'asc' },
+      include: {
+        student: { include: { category: true, branch: true } },
+      },
+      orderBy: [{ lastName: 'asc' }, { name: 'asc' }],
     });
 
-    return parents.map((p) => ({
-      nombre: `${p.name} ${p.lastName}`,
-      email: p.email,
-      telefono: p.phone ?? '—',
-      whatsapp: p.phone
-        ? `https://wa.me/${p.phone.replace(/\D/g, '')}`
+    return guardians.map((g) => ({
+      apoderado: `${g.name} ${g.lastName}`,
+      telefono: g.phone ?? '—',
+      email: g.email ?? '—',
+      hijo: g.student ? `${g.student.name} ${g.student.lastName}` : '—',
+      categoria: g.student?.category?.name ?? '—',
+      sucursal: g.student?.branch?.name ?? '—',
+      relacion: g.relationship,
+      whatsapp: g.phone
+        ? `https://wa.me/${g.phone.replace(/\D/g, '')}`
         : null,
-      hijos: p.children
-        .map((s) => `${s.name} ${s.lastName} (${s.category.name})`)
-        .join('; '),
     }));
+  }
+
+  async getPaymentsMembershipExport(params: {
+    from?: string;
+    to?: string;
+    branchId?: string;
+    categoryId?: string;
+  }) {
+    const prisma = this.prismaService.prisma;
+    const from = params.from ? new Date(params.from) : undefined;
+    const to = params.to ? new Date(params.to) : undefined;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    const students = await prisma.student.findMany({
+      where: {
+        status: ACTIVE_STUDENT_STATUS,
+        ...(params.branchId ? { branchId: params.branchId } : {}),
+        ...(params.categoryId ? { categoryId: params.categoryId } : {}),
+      },
+      include: {
+        category: true,
+        branch: true,
+        parent: true,
+        guardians: { where: { isActive: true }, take: 1 },
+      },
+      orderBy: [
+        { branch: { name: 'asc' } },
+        { category: { name: 'asc' } },
+        { lastName: 'asc' },
+      ],
+    });
+
+    const ids = students.map((s) => s.id);
+    const paidPayments = await prisma.payment.findMany({
+      where: {
+        students: { some: { id: { in: ids } } },
+        status: PaymentStatus.PAID,
+        expiresAt: { not: null },
+        ...(from || to
+          ? {
+              paymentDate: {
+                ...(from ? { gte: from } : {}),
+                ...(to ? { lte: to } : {}),
+              },
+            }
+          : {}),
+      },
+      select: {
+        expiresAt: true,
+        paymentDate: true,
+        total: true,
+        students: { select: { id: true } },
+      },
+      orderBy: { expiresAt: 'desc' },
+    });
+
+    const paidUntilMap = new Map<string, Date>();
+    const lastPaymentMap = new Map<string, Date>();
+    for (const payment of paidPayments) {
+      if (!payment.expiresAt) continue;
+      for (const st of payment.students) {
+        const current = paidUntilMap.get(st.id);
+        if (!current || payment.expiresAt > current) {
+          paidUntilMap.set(st.id, payment.expiresAt);
+          if (payment.paymentDate) {
+            lastPaymentMap.set(st.id, payment.paymentDate);
+          }
+        }
+      }
+    }
+
+    const now = new Date();
+    return students.map((s) => {
+      const paidUntil = paidUntilMap.get(s.id);
+      const membership = getMembershipStatus(paidUntil, now);
+      const contact = s.parent ?? s.guardians[0];
+      return {
+        sucursal: s.branch.name,
+        categoria: s.category.name,
+        alumno: `${s.name} ${s.lastName}`,
+        apoderado: contact ? `${contact.name} ${contact.lastName}` : '—',
+        telefono: contact?.phone ?? '—',
+        estadoMensualidad: membership.label,
+        vence: paidUntil ?? null,
+        ultimoPago: lastPaymentMap.get(s.id) ?? null,
+        alDia: membership.membershipActive,
+      };
+    });
   }
 }

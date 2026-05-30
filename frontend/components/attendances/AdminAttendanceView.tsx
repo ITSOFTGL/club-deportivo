@@ -12,22 +12,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAttendancesStore } from '@/store/attendancesStore';
 import { useCategoriesStore } from '@/store/categoriesStore';
+import { useBranchesStore } from '@/store/branchesStore';
 import { useUsersStore } from '@/store/usersStore';
 import { formatLocalDateLong, isoToLocalDateKey } from '@/lib/utils/date';
-
-const statusColors: Record<string, string> = {
-  PRESENT: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  ABSENT: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  LATE: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  PENDING: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-};
-
-const statusLabels: Record<string, string> = {
-  PRESENT: 'Presente',
-  ABSENT: 'Ausente',
-  LATE: 'Tardanza',
-  PENDING: 'Pendiente',
-};
+import { attendanceCameLabel, formatTimeBo } from '@/lib/exportPdf';
 
 interface Category {
   id: string;
@@ -55,12 +43,15 @@ export function AdminAttendanceView() {
   } = useAttendancesStore();
   
   const { categories, fetchCategories } = useCategoriesStore();
+  const { branches, fetchBranches } = useBranchesStore();
   const { users, fetchUsers } = useUsersStore();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBranchId, setSelectedBranchId] = useState('');
 
   useEffect(() => {
     fetchCategories();
+    fetchBranches();
     fetchUsers();
   }, []);
 
@@ -78,10 +69,9 @@ export function AdminAttendanceView() {
     }));
 
   const filteredAttendances = attendances.filter((attendance) => {
-    // Filtrar por categoría (usando student?.categoryId)
     if (selectedCategoryId && attendance.student?.categoryId !== selectedCategoryId) return false;
-    // Filtrar por profesor (usando userId)
-    if (selectedTeacherId && attendance.userId !== selectedTeacherId) return false;
+    if (selectedBranchId && attendance.student?.branchId !== selectedBranchId) return false;
+    if (selectedTeacherId && attendance.verifiedBy !== selectedTeacherId) return false;
     // Filtrar por búsqueda de alumno
     if (searchTerm) {
       const studentName = `${attendance.student?.name || ''} ${attendance.student?.lastName || ''}`.toLowerCase();
@@ -101,22 +91,40 @@ export function AdminAttendanceView() {
     {} as Record<string, typeof attendances>,
   );
 
+  const cameCount = filteredAttendances.filter(
+    (a) => attendanceCameLabel(a.status) === 'Sí',
+  ).length;
+  const notCameCount = filteredAttendances.filter(
+    (a) => attendanceCameLabel(a.status) === 'No',
+  ).length;
+
   const stats = [
-    { label: 'Total Asistencias', value: attendances.length, icon: CalendarIcon, color: 'from-blue-500 to-blue-600' },
-    { label: 'Presentes', value: attendances.filter(a => a.status === 'PRESENT').length, icon: CalendarIcon, color: 'from-green-500 to-green-600' },
-    { label: 'Ausentes', value: attendances.filter(a => a.status === 'ABSENT').length, icon: CalendarIcon, color: 'from-red-500 to-red-600' },
+    { label: 'Registros', value: filteredAttendances.length, icon: CalendarIcon, color: 'from-blue-500 to-blue-600' },
+    { label: 'Vinieron', value: cameCount, icon: CalendarIcon, color: 'from-green-500 to-green-600' },
+    { label: 'No vinieron', value: notCameCount, icon: CalendarIcon, color: 'from-red-500 to-red-600' },
   ];
 
+  const formatRecordDateTime = (createdAt?: string, checkIn?: string) => {
+    if (!createdAt) return '—';
+    const d = new Date(createdAt);
+    const date = d.toLocaleDateString('es-BO');
+    const time = checkIn
+      ? formatTimeBo(checkIn)
+      : d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+    return `${date} ${time}`;
+  };
+
   const exportToCSV = () => {
-    const headers = ['Alumno', 'Categoría', 'Profesor', 'Fecha', 'Estado', 'Hora', 'Observaciones'];
+    const headers = ['Alumno', 'Sucursal', 'Fecha y hora', '¿Vino?', 'Observación / licencia', 'Profesor'];
     const rows = filteredAttendances.map(a => [
       `${a.student?.name || ''} ${a.student?.lastName || ''}`,
-      a.student?.category?.name || '-',
-      a.user?.name || '-',
-      new Date(a.createdAt || '').toLocaleDateString('es-ES'),
-      statusLabels[a.status],
-      a.checkInTime || '-',
+      a.student?.branch?.name || '-',
+      formatRecordDateTime(a.createdAt, a.checkInTime),
+      attendanceCameLabel(a.status),
       a.observations || '-',
+      a.verifier
+        ? `${a.verifier.name} ${a.verifier.lastName ?? ''}`.trim()
+        : '-',
     ]);
     
     const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -173,7 +181,7 @@ export function AdminAttendanceView() {
 
       {/* Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="relative">
             <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -182,6 +190,18 @@ export function AdminAttendanceView() {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
             />
+          </div>
+          <div className="relative">
+            <select
+              value={selectedBranchId}
+              onChange={(e) => setSelectedBranchId(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613]"
+            >
+              <option value="">Todas las sucursales</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
           </div>
           <div className="relative">
             <AcademicCapIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -241,11 +261,11 @@ export function AdminAttendanceView() {
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alumno</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sucursal</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha y hora</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">¿Vino?</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observación / licencia</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profesor</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hora</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Observaciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -258,28 +278,34 @@ export function AdminAttendanceView() {
                         </td>
                         <td className="px-6 py-4">
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {attendance.student?.category?.name || '-'}
+                            {attendance.student?.branch?.name || '-'}
                           </p>
                         </td>
                         <td className="px-6 py-4">
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {attendance.user
-                              ? `${attendance.user.name} ${attendance.user.lastName ?? ''}`.trim() ||
-                                attendance.user.email ||
-                                '-'
-                              : '-'}
+                            {formatRecordDateTime(attendance.createdAt, attendance.checkInTime)}
                           </p>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-gray-600">{attendance.checkInTime || '-'}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[attendance.status]}`}>
-                            {statusLabels[attendance.status]}
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              attendanceCameLabel(attendance.status) === 'Sí'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {attendanceCameLabel(attendance.status)}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-gray-500 truncate max-w-xs">{attendance.observations || '-'}</p>
+                          <p className="text-sm text-gray-600 max-w-xs">{attendance.observations || '—'}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm text-gray-500">
+                            {attendance.verifier
+                              ? `${attendance.verifier.name} ${attendance.verifier.lastName ?? ''}`.trim()
+                              : '—'}
+                          </p>
                         </td>
                       </tr>
                     ))}
