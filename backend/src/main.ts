@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { EmptyStringNormalizerPipe } from './common/pipes/empty-string-normalizer.pipe';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -13,14 +14,21 @@ async function bootstrap() {
   if (!existsSync(uploadsPath)) mkdirSync(uploadsPath, { recursive: true });
   app.useStaticAssets(uploadsPath, { prefix: '/uploads/' });
 
-  // Habilitar CORS
-  app.enableCors();
+  const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim());
+  app.enableCors(
+    corsOrigin?.length
+      ? { origin: corsOrigin, credentials: true }
+      : undefined,
+  );
 
-  // Validación global
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new EmptyStringNormalizerPipe(),
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
 
   // Configuración de Swagger
   const config = new DocumentBuilder()

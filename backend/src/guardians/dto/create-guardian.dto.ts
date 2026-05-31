@@ -31,7 +31,7 @@ export class CreateGuardianDto {
   @IsString()
   phone!: string;
 
-  @IsOptional()
+  @ValidateIf((_, v) => v != null && String(v).trim() !== '')
   @IsEmail()
   email?: string;
 

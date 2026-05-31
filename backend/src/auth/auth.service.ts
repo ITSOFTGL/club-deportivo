@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { sanitizeUser } from '../common/utils/sanitize-user';
+import { getJwtSecretKey } from '../common/utils/jwt-secret.util';
 
 @Injectable()
 export class AuthService {
@@ -144,8 +145,7 @@ export class AuthService {
       console.log('🚨 ¡ALERTA CRÍTICA! userId contiene texto basura ANTES de firmar!');
     }
     
-    const secret = new TextEncoder().encode('SuperSecretKey123456789');
-    console.log('🔑 Secret usado:', 'SuperSecretKey123456789');
+    const secret = getJwtSecretKey();
     
     const payload = { sub: userId, email, role };
     console.log('📦 Payload a firmar:', JSON.stringify(payload, null, 2));

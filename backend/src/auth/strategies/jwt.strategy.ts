@@ -6,7 +6,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 
-const FIXED_SECRET = 'SuperSecretKey123456789';
+import { getJwtSecretString } from '../../common/utils/jwt-secret.util';
 
 export type AccessTokenPayload = {
   sub: string;
@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: FIXED_SECRET,
+      secretOrKey: getJwtSecretString(),
     });
   }
 

@@ -1,5 +1,11 @@
 // backend/src/branches/dto/create-branch.dto.ts
-import { IsString, IsOptional, IsBoolean, IsEmail } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsEmail,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateBranchDto {
   @IsString()
@@ -11,7 +17,7 @@ export class CreateBranchDto {
   @IsString()
   phone!: string;
 
-  @IsOptional()
+  @ValidateIf((_, v) => v != null && String(v).trim() !== '')
   @IsEmail()
   email?: string;
 
@@ -21,5 +27,5 @@ export class CreateBranchDto {
 
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;  // ← Agrega esta línea
+  isActive?: boolean;
 }

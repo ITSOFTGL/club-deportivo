@@ -7,7 +7,7 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole, UserStatus, Gender } from '@prisma/client';
 import { IsStrongPassword } from '../../common/validators/is-strong-password.validator';
 
 export class CreateUserDto {
@@ -39,11 +39,11 @@ export class CreateUserDto {
   @IsString()
   address?: string;
 
-  @IsOptional()
-  @IsString()
-  gender?: string;
+  @ValidateIf((_, v) => v != null && String(v).trim() !== '')
+  @IsEnum(Gender)
+  gender?: Gender;
 
-  @IsOptional()
+  @ValidateIf((_, v) => v != null && String(v).trim() !== '')
   @IsDateString()
   birthDate?: string;
 }
