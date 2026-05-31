@@ -2,6 +2,16 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+function getApiBaseUrl(): string {
+  const url = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+  if (!url) {
+    throw new Error(
+      'NEXT_PUBLIC_API_URL no está configurada. Defínela en el entorno de producción antes del build.',
+    );
+  }
+  return url;
+}
+
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
@@ -12,7 +22,7 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+          const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

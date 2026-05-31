@@ -52,9 +52,22 @@ export function BranchFormModal({
     }
   }, [branch, isOpen]);
 
+  const buildPayload = (): CreateBranchDto => {
+    const payload: CreateBranchDto = {
+      name: formData.name.trim(),
+      location: formData.location.trim(),
+      phone: formData.phone.trim(),
+    };
+    const email = formData.email?.trim();
+    const schedule = formData.schedule?.trim();
+    if (email) payload.email = email;
+    if (schedule) payload.schedule = schedule;
+    return payload;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await onSubmit(formData);
+    const success = await onSubmit(buildPayload());
     if (success) {
       onClose();
     }

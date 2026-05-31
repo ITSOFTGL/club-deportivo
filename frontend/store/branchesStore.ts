@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { Branch, CreateBranchDto, UpdateBranchDto } from '@/lib/api/branches';
 import branchesApi from '@/lib/api/branches';
+import { getApiErrorMessage } from '@/lib/apiError';
 import toast from 'react-hot-toast';
 
 interface BranchesState {
@@ -46,9 +47,9 @@ export const useBranchesStore = create<BranchesState>((set, get) => ({
       }));
       toast.success('Sucursal creada exitosamente');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating branch:', error);
-      toast.error(error?.message || 'Error al crear sucursal');
+      toast.error(getApiErrorMessage(error, 'Error al crear sucursal'));
       set({ loading: false });
       return false;
     }
@@ -64,9 +65,12 @@ export const useBranchesStore = create<BranchesState>((set, get) => ({
       }));
       toast.success('Sucursal actualizada exitosamente');
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating branch:', error);
-      toast.error(error?.message || 'Error al actualizar sucursal');
+      const msg = (error as { message?: string | string[] })?.message;
+      toast.error(
+        Array.isArray(msg) ? msg.join(', ') : msg || 'Error al actualizar sucursal',
+      );
       set({ loading: false });
       return false;
     }

@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { User, CreateUserDto, UpdateUserDto } from '@/lib/api/users';
 import usersApi from '@/lib/api/users';
+import { getApiErrorMessage } from '@/lib/apiError';
 import toast from 'react-hot-toast';
 
 interface UsersState {
@@ -19,7 +20,7 @@ interface UsersState {
   resetPassword: (id: string, password: string) => Promise<boolean>;
 }
 
-export const useUsersStore = create<UsersState>((set, get) => ({
+export const useUsersStore = create<UsersState>((set) => ({
   users: [],
   loading: false,
   error: null,
@@ -28,49 +29,37 @@ export const useUsersStore = create<UsersState>((set, get) => ({
   setSearchTerm: (term) => set({ searchTerm: term }),
 
   fetchUsers: async () => {
-    console.log('🔄 Cargando usuarios...');
     set({ loading: true, error: null });
     try {
       const data = await usersApi.getAll();
-      console.log('📥 Usuarios recibidos:', data);
       set({ users: Array.isArray(data) ? data : [], loading: false });
-    } catch (error: any) {
-      console.error('❌ Error fetching users:', error);
-      console.error('❌ Response:', error.response?.data);
-      set({ error: error.message, users: [], loading: false });
+    } catch (error: unknown) {
+      set({ error: getApiErrorMessage(error), users: [], loading: false });
       toast.error('Error al cargar usuarios');
     }
   },
 
   createUser: async (data) => {
-    console.log('📤 Creando usuario:', data);
     set({ loading: true });
     try {
       const newUser = await usersApi.create(data);
-      console.log('✅ Usuario creado:', newUser);
       set((state) => ({
         users: [newUser, ...state.users],
         loading: false,
       }));
       toast.success('Usuario creado exitosamente');
       return true;
-    } catch (error: any) {
-      console.error('❌ Error creating user:', error);
-      console.error('❌ Response:', error.response?.data);
-      toast.error(error.response?.data?.message || 'Error al crear usuario');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al crear usuario'));
       set({ loading: false });
       return false;
     }
   },
 
   updateUser: async (id, data) => {
-    console.log('📤 Actualizando usuario:', { id, data });
     set({ loading: true });
     try {
-      // Crear objeto con solo los campos que tienen valor (no undefined)
       const cleanData: UpdateUserDto = {};
-      
-      // Usar hasOwnProperty para verificar campos presentes
       if (data.email !== undefined) cleanData.email = data.email;
       if (data.name !== undefined) cleanData.name = data.name;
       if (data.lastName !== undefined) cleanData.lastName = data.lastName;
@@ -80,22 +69,19 @@ export const useUsersStore = create<UsersState>((set, get) => ({
       if (data.address !== undefined) cleanData.address = data.address;
       if (data.birthDate !== undefined) cleanData.birthDate = data.birthDate;
       if (data.gender !== undefined) cleanData.gender = data.gender;
-      if (data.password !== undefined && data.password !== '') cleanData.password = data.password;
-      
-      console.log('📤 Enviando actualización:', cleanData);
+      if (data.password !== undefined && data.password !== '') {
+        cleanData.password = data.password;
+      }
+
       const updatedUser = await usersApi.update(id, cleanData);
-      console.log('✅ Usuario actualizado:', updatedUser);
-      
       set((state) => ({
         users: state.users.map((u) => (u.id === id ? updatedUser : u)),
         loading: false,
       }));
       toast.success('Usuario actualizado exitosamente');
       return true;
-    } catch (error: any) {
-      console.error('❌ Error updating user:', error);
-      console.error('❌ Response:', error.response?.data);
-      toast.error(error.response?.data?.message || 'Error al actualizar usuario');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al actualizar usuario'));
       set({ loading: false });
       return false;
     }
@@ -111,9 +97,8 @@ export const useUsersStore = create<UsersState>((set, get) => ({
       }));
       toast.success('Usuario eliminado exitosamente');
       return true;
-    } catch (error: any) {
-      console.error('Error deleting user:', error);
-      toast.error(error?.message || 'Error al eliminar usuario');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al eliminar usuario'));
       set({ loading: false });
       return false;
     }
@@ -122,16 +107,15 @@ export const useUsersStore = create<UsersState>((set, get) => ({
   changeRole: async (id, role) => {
     set({ loading: true });
     try {
-      const updatedUser = await usersApi.changeRole(id, { role: role as any });
+      const updatedUser = await usersApi.changeRole(id, { role: role as CreateUserDto['role'] });
       set((state) => ({
         users: state.users.map((u) => (u.id === id ? updatedUser : u)),
         loading: false,
       }));
       toast.success('Rol actualizado exitosamente');
       return true;
-    } catch (error: any) {
-      console.error('Error changing role:', error);
-      toast.error(error?.message || 'Error al cambiar rol');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al cambiar rol'));
       set({ loading: false });
       return false;
     }
@@ -140,16 +124,17 @@ export const useUsersStore = create<UsersState>((set, get) => ({
   changeStatus: async (id, status) => {
     set({ loading: true });
     try {
-      const updatedUser = await usersApi.changeStatus(id, { status: status as any });
+      const updatedUser = await usersApi.changeStatus(id, {
+        status: status as User['status'],
+      });
       set((state) => ({
         users: state.users.map((u) => (u.id === id ? updatedUser : u)),
         loading: false,
       }));
       toast.success('Estado actualizado exitosamente');
       return true;
-    } catch (error: any) {
-      console.error('Error changing status:', error);
-      toast.error(error?.message || 'Error al cambiar estado');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al cambiar estado'));
       set({ loading: false });
       return false;
     }
@@ -158,13 +143,12 @@ export const useUsersStore = create<UsersState>((set, get) => ({
   resetPassword: async (id, password) => {
     set({ loading: true });
     try {
-      await usersApi.resetPassword(id, { password });
+      await usersApi.resetPassword(id, { newPassword: password });
       set({ loading: false });
       toast.success('Contraseña restablecida exitosamente');
       return true;
-    } catch (error: any) {
-      console.error('Error resetting password:', error);
-      toast.error(error?.message || 'Error al restablecer contraseña');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al restablecer contraseña'));
       set({ loading: false });
       return false;
     }

@@ -10,9 +10,9 @@ export interface User {
   phone?: string;
   address?: string;
   birthDate?: string;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  gender?: 'MASCULINO' | 'FEMENINO' | 'OTRO';
   role: 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'COLLECTOR' | 'PARENT';
-  status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   profileImage?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -27,12 +27,12 @@ export interface CreateUserDto {
   phone?: string;
   address?: string;
   birthDate?: string;
-  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  gender?: 'MASCULINO' | 'FEMENINO' | 'OTRO';
   role: 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'COLLECTOR' | 'PARENT';
 }
 
 export interface UpdateUserDto extends Partial<CreateUserDto> {
-  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING';
+  status?: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 }
 
 export interface ChangeRoleDto {
@@ -40,11 +40,11 @@ export interface ChangeRoleDto {
 }
 
 export interface ChangeStatusDto {
-  status: 'ACTIVE' | 'INACTIVE' | 'PENDING';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 }
 
 export interface ResetPasswordDto {
-  password: string;
+  newPassword: string;
 }
 
 const usersApi = {

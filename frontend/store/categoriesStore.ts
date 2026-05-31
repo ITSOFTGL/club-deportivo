@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { Category, CreateCategoryDto, UpdateCategoryDto } from '@/lib/api/categories';
 import categoriesApi from '@/lib/api/categories';
+import { getApiErrorMessage } from '@/lib/apiError';
 import toast from 'react-hot-toast';
 
 interface CategoriesState {
@@ -49,7 +50,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
     } catch (error: any) {
       console.error('Error creating category:', error);
       console.error('Response:', error.response?.data);
-      toast.error(error?.response?.data?.message || 'Error al crear categoría');
+      toast.error(getApiErrorMessage(error, 'Error al crear categoría'));
       set({ loading: false });
       return false;
     }
@@ -67,7 +68,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error updating category:', error);
-      toast.error(error?.response?.data?.message || 'Error al actualizar categoría');
+      toast.error(getApiErrorMessage(error, 'Error al actualizar categoría'));
       set({ loading: false });
       return false;
     }
@@ -85,7 +86,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error deleting category:', error);
-      toast.error(error?.response?.data?.message || 'Error al eliminar categoría');
+      toast.error(getApiErrorMessage(error, 'Error al eliminar categoría'));
       set({ loading: false });
       return false;
     }
