@@ -34,8 +34,9 @@ export const useUsersStore = create<UsersState>((set) => ({
       const data = await usersApi.getAll();
       set({ users: Array.isArray(data) ? data : [], loading: false });
     } catch (error: unknown) {
-      set({ error: getApiErrorMessage(error), users: [], loading: false });
-      toast.error('Error al cargar usuarios');
+      const msg = getApiErrorMessage(error, 'Error al cargar usuarios');
+      set({ error: msg, users: [], loading: false });
+      toast.error(msg);
     }
   },
 

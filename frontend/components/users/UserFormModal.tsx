@@ -84,10 +84,15 @@ export function UserFormModal({
     e.preventDefault();
     
     // Datos base obligatorios
+    if (!formData.lastName?.trim()) {
+      toast.error('El apellido es obligatorio');
+      return;
+    }
+
     const dataToSend: any = {
-      email: formData.email,
-      name: formData.name,
-      lastName: formData.lastName,
+      email: formData.email.trim(),
+      name: formData.name.trim(),
+      lastName: formData.lastName.trim(),
       role: formData.role,
     };
     

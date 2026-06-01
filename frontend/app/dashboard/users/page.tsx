@@ -13,6 +13,7 @@ import {
   KeyIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
+import { useSession } from 'next-auth/react';
 import { useUsersStore } from '@/store/usersStore';
 import { UserFormModal } from '@/components/users/UserFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
@@ -49,9 +50,15 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function UsersPage() {
+  const { data: session } = useSession();
+  const canManage = ['SUPER_ADMIN', 'ADMIN'].includes(
+    session?.user?.role ?? '',
+  );
+
   const {
     users,
     loading,
+    error,
     searchTerm,
     setSearchTerm,
     fetchUsers,
@@ -71,8 +78,8 @@ export default function UsersPage() {
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (canManage) fetchUsers();
+  }, [canManage]);
 
   const filteredUsers = users.filter((user: User) => {
     const search = searchTerm.toLowerCase();
@@ -146,8 +153,24 @@ export default function UsersPage() {
     await changeStatus(userId, newStatus);
   };
 
+  if (!canManage) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-amber-900">
+        <p className="font-medium">Sin permiso para gestionar usuarios</p>
+        <p className="text-sm mt-1">
+          Solo Super Admin y Administrador pueden ver y crear usuarios del sistema.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm">
+          {error}
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Usuarios</h1>

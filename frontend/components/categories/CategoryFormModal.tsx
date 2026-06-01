@@ -54,7 +54,7 @@ export function CategoryFormModal({
   const [formData, setFormData] = useState<CreateCategoryDto>({
     name: '',
     description: '',
-    type: 'SPORT',
+    type: 'FOOTBALL',
     monthlyPrice: 0,
     maxCapacity: 20,
     minAge: undefined,
@@ -78,7 +78,7 @@ export function CategoryFormModal({
       setFormData({
         name: category.name || '',
         description: category.description || '',
-        type: category.type || 'SPORT',
+        type: category.type || 'FOOTBALL',
         monthlyPrice: category.monthlyPrice || 0,
         maxCapacity: category.maxCapacity || 20,
         minAge: category.minAge,
@@ -91,7 +91,7 @@ export function CategoryFormModal({
       setFormData({
         name: '',
         description: '',
-        type: 'SPORT',
+        type: 'FOOTBALL',
         monthlyPrice: 0,
         maxCapacity: 20,
         minAge: undefined,
@@ -286,7 +286,9 @@ export function CategoryFormModal({
                         </div>
                         <select
                           value={formData.branchId}
-                          onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                          onChange={(e) =>
+                            setFormData({ ...formData, branchId: e.target.value })
+                          }
                           className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
                           required
                         >
@@ -298,6 +300,11 @@ export function CategoryFormModal({
                           ))}
                         </select>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2 col-span-2">
+                        Puede repetir el nombre (ej. Sub 10) en cada sucursal. En la misma
+                        sucursal marque varios turnos (mañana/tarde) abajo: cada turno queda
+                        separado y los alumnos no se mezclan.
+                      </p>
                     </div>
                   </div>
 
