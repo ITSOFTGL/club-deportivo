@@ -2,7 +2,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { HttpAdapterHost } from '@nestjs/core';
 import { EmptyStringNormalizerPipe } from './common/pipes/empty-string-normalizer.pipe';
+import { DatabaseSchemaExceptionFilter } from './common/filters/database-schema-exception.filter';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -29,6 +31,9 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new DatabaseSchemaExceptionFilter(httpAdapterHost));
 
   // Configuración de Swagger
   const config = new DocumentBuilder()
