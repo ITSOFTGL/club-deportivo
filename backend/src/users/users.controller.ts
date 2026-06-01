@@ -27,7 +27,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 
 @ApiTags('users')
 @ApiBearerAuth()
-@Controller('users')
+/** Ruta `usuarios`: algunos proxies/WAF bloquean `/users` en producción */
+@Controller('usuarios')
 @UseGuards(JwtAuthGuard, RolesGuard)  // ← AGREGAR ESTO
 export class UsersController {
   constructor(private readonly users: UsersService) {}

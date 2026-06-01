@@ -1,5 +1,9 @@
 // backend/src/categories/categories.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -11,10 +15,20 @@ export class CategoriesService {
   async create(createCategoryDto: CreateCategoryDto) {
     const { shifts, ...categoryData } = createCategoryDto;
 
-    // Crear la categoría
-    const category = await this.prismaService.prisma.category.create({
-      data: categoryData,
-    });
+    let category;
+    try {
+      category = await this.prismaService.prisma.category.create({
+        data: categoryData,
+      });
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code;
+      if (code === 'P2002') {
+        throw new ConflictException(
+          'Ya existe esa categoría en esta sucursal. Use el mismo nombre en otra sede creando otra fila con la otra sucursal.',
+        );
+      }
+      throw e;
+    }
 
     // Si hay turnos, crear los CategoryShifts
     if (shifts && shifts.length > 0) {

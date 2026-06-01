@@ -28,7 +28,7 @@ export class UsersService {
     const users = await this.prismaService.prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
     });
-    return users.map(sanitizeUser);
+    return users.map((u) => this.toUserResponse(u));
   }
 
   async findOne(id: string, actor: AuthUser) {
@@ -40,7 +40,7 @@ export class UsersService {
     if (actor.id !== id) {
       this.assertCanManage(actor, user);
     }
-    return sanitizeUser(user);
+    return this.toUserResponse(user);
   }
 
   async create(dto: CreateUserDto, actor: AuthUser) {
@@ -65,12 +65,14 @@ export class UsersService {
     const pwdCheck = validatePassword(dto.password);
     if (!pwdCheck.valid) throw new BadRequestException(pwdCheck.message);
     const hashed = await bcrypt.hash(dto.password, 10);
+    const lastName = dto.lastName?.trim() || dto.name.trim() || '—';
+
     const user = await this.prismaService.prisma.user.create({
       data: {
-        email: dto.email,
+        email: dto.email.trim().toLowerCase(),
         password: hashed,
-        name: dto.name,
-        lastName: dto.lastName,
+        name: dto.name.trim(),
+        lastName,
         role: dto.role,
         phone: dto.phone,
         documentId: dto.documentId,
@@ -80,7 +82,7 @@ export class UsersService {
         status: UserStatus.ACTIVE,
       },
     });
-    return sanitizeUser(user);
+    return this.toUserResponse(user);
   }
 
   async update(id: string, dto: UpdateUserDto, actor: AuthUser) {
@@ -127,7 +129,7 @@ export class UsersService {
         ...(password && { password: await bcrypt.hash(password, 10) }),
       },
     });
-    return sanitizeUser(user);
+    return this.toUserResponse(user);
   }
 
   async changeRole(id: string, dto: ChangeRoleDto, actor: AuthUser) {
@@ -146,7 +148,7 @@ export class UsersService {
       where: { id },
       data: { role: dto.role },
     });
-    return sanitizeUser(user);
+    return this.toUserResponse(user);
   }
 
   async changeStatus(id: string, dto: UpdateUserStatusDto, actor: AuthUser) {
@@ -157,7 +159,7 @@ export class UsersService {
       where: { id },
       data: { status: dto.status },
     });
-    return sanitizeUser(user);
+    return this.toUserResponse(user);
   }
 
   async resetPassword(
@@ -175,7 +177,7 @@ export class UsersService {
       where: { id },
       data: { password: hashed },
     });
-    return sanitizeUser(user);
+    return this.toUserResponse(user);
   }
 
   async softDelete(id: string, actor: AuthUser) {
@@ -187,6 +189,23 @@ export class UsersService {
       data: { status: UserStatus.INACTIVE },
     });
     return { id, status: UserStatus.INACTIVE };
+  }
+
+  private toUserResponse(user: Parameters<typeof sanitizeUser>[0]) {
+    const safe = sanitizeUser(user);
+    return {
+      ...safe,
+      birthDate: user.birthDate ? user.birthDate.toISOString() : null,
+      membershipStart: user.membershipStart
+        ? user.membershipStart.toISOString()
+        : null,
+      membershipEnd: user.membershipEnd
+        ? user.membershipEnd.toISOString()
+        : null,
+      lastLogin: user.lastLogin ? user.lastLogin.toISOString() : null,
+      createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
+    };
   }
 
   private ensureStaff(actor: AuthUser) {

@@ -239,9 +239,9 @@ model Branch {
 
 model Category {
   id          String        @id @default(cuid())
-  name        String        @unique
+  name        String
   description String?
-  type        CategoryType  @default(SPORT)
+  type        CategoryType  @default(FOOTBALL)
   monthlyPrice Float
   maxCapacity Int           @default(20)
   minAge      Int?
@@ -261,6 +261,7 @@ model Category {
   students        Student[]
   events          Event[]
   
+  @@unique([name, branchId])
   @@index([type])
   @@index([isActive])
   @@index([branchId])

@@ -21,8 +21,9 @@ export class CreateUserDto {
   @IsString()
   name!: string;
 
+  @ValidateIf((_, v) => v != null && String(v).trim() !== '')
   @IsString()
-  lastName!: string;
+  lastName?: string;
 
   @IsEnum(UserRole)
   role!: UserRole;
