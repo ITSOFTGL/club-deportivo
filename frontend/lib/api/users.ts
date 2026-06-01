@@ -47,7 +47,9 @@ export interface ResetPasswordDto {
   newPassword: string;
 }
 
-const BASE = '/usuarios';
+/** En producción no usar `/users`: algunos proxies/WAF lo bloquean (401). */
+export const USERS_API_BASE = '/usuarios';
+const BASE = USERS_API_BASE;
 
 const usersApi = {
   getAll: (): Promise<User[]> => api.get(BASE),

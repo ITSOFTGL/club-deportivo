@@ -16,6 +16,7 @@ interface CategoriesState {
   createCategory: (data: CreateCategoryDto) => Promise<boolean>;
   updateCategory: (id: string, data: UpdateCategoryDto) => Promise<boolean>;
   deleteCategory: (id: string) => Promise<boolean>;
+  deactivateCategory: (id: string) => Promise<boolean>;
 }
 
 export const useCategoriesStore = create<CategoriesState>((set, get) => ({
@@ -35,7 +36,7 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
     } catch (error: any) {
       console.error('Error fetching categories:', error);
       set({ error: error.message, categories: [], loading: false });
-      toast.error('Error al cargar categorías');
+      toast.error(getApiErrorMessage(error, 'Error al cargar categorías'));
     }
   },
 
@@ -69,6 +70,23 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
     } catch (error: any) {
       console.error('Error updating category:', error);
       toast.error(getApiErrorMessage(error, 'Error al actualizar categoría'));
+      set({ loading: false });
+      return false;
+    }
+  },
+
+  deactivateCategory: async (id: string) => {
+    set({ loading: true });
+    try {
+      const updated = await categoriesApi.update(id, { isActive: false });
+      set((state) => ({
+        categories: state.categories.map((c) => (c.id === id ? updated : c)),
+        loading: false,
+      }));
+      toast.success('Categoría desactivada. Ya no aparecerá para nuevos alumnos.');
+      return true;
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al desactivar categoría'));
       set({ loading: false });
       return false;
     }

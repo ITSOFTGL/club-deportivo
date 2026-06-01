@@ -4,6 +4,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { formatCategoryLabel } from '@/lib/api/categories';
 
 interface Branch {
   id: string;
@@ -13,6 +14,9 @@ interface Branch {
 interface Category {
   id: string;
   name: string;
+  groupLabel?: string;
+  branch?: { name?: string };
+  isActive?: boolean;
 }
 
 interface Parent {
@@ -310,9 +314,16 @@ export function StudentFormModal({
                           required
                         >
                           <option value="">Seleccionar categoría</option>
-                          {categories.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
+                          {categories
+                            .filter(
+                              (c) =>
+                                c.isActive !== false || c.id === formData.categoryId,
+                            )
+                            .map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {formatCategoryLabel(c)}
+                              </option>
+                            ))}
                         </select>
                       </div>
                     </div>
@@ -594,9 +605,16 @@ export function StudentFormModal({
                           required
                         >
                           <option value="">Seleccionar categoría</option>
-                          {categories.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
+                          {categories
+                            .filter(
+                              (c) =>
+                                c.isActive !== false || c.id === formData.categoryId,
+                            )
+                            .map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {formatCategoryLabel(c)}
+                              </option>
+                            ))}
                         </select>
                       </div>
                       <div>

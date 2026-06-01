@@ -19,7 +19,12 @@ import { useBranchesStore } from '@/store/branchesStore';
 import { useShiftsStore } from '@/store/shiftsStore';
 import { CategoryFormModal } from '@/components/categories/CategoryFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
-import { Category, CreateCategoryDto } from '@/lib/api/categories';
+import {
+  Category,
+  CreateCategoryDto,
+  formatCategoryDisplayName,
+  formatCategoryLabel,
+} from '@/lib/api/categories';
 import { Branch } from '@/lib/api/branches';
 
 export default function CategoriesPage() {
@@ -32,6 +37,7 @@ export default function CategoriesPage() {
     createCategory,
     updateCategory,
     deleteCategory,
+    deactivateCategory,
   } = useCategoriesStore();
 
   const { branches, fetchBranches } = useBranchesStore();
@@ -83,6 +89,17 @@ export default function CategoriesPage() {
     if (!deletingCategory) return;
     setFormLoading(true);
     const success = await deleteCategory(deletingCategory.id);
+    setFormLoading(false);
+    if (success) {
+      setIsDeleteModalOpen(false);
+      setDeletingCategory(null);
+    }
+  };
+
+  const handleDeactivateFromDelete = async () => {
+    if (!deletingCategory) return;
+    setFormLoading(true);
+    const success = await deactivateCategory(deletingCategory.id);
     setFormLoading(false);
     if (success) {
       setIsDeleteModalOpen(false);
@@ -171,6 +188,7 @@ export default function CategoriesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rango de Edad</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
@@ -187,7 +205,7 @@ export default function CategoriesPage() {
                 ))
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     <AcademicCapIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     {searchTerm ? 'No se encontraron categorías' : 'No hay categorías registradas'}
                   </td>
@@ -200,7 +218,9 @@ export default function CategoriesPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="hover:bg-gray-50 transition-colors"
+                      className={`hover:bg-gray-50 transition-colors ${
+                        category.isActive === false ? 'opacity-60' : ''
+                      }`}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
@@ -208,7 +228,9 @@ export default function CategoriesPage() {
                             <AcademicCapIcon className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{category.name}</p>
+                            <p className="font-medium text-gray-900">
+                              {formatCategoryDisplayName(category)}
+                            </p>
                             {category.description && (
                               <p className="text-xs text-gray-500 mt-0.5">{category.description}</p>
                             )}
@@ -261,6 +283,17 @@ export default function CategoriesPage() {
                           {getBranchName(category.branchId)}
                         </p>
                       </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            category.isActive !== false
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-200 text-gray-600'
+                          }`}
+                        >
+                          {category.isActive !== false ? 'Activa' : 'Inactiva'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button
                           onClick={() => handleEdit(category)}
@@ -306,8 +339,11 @@ export default function CategoriesPage() {
           setDeletingCategory(null);
         }}
         onConfirm={handleDelete}
+        onAlternative={handleDeactivateFromDelete}
+        alternativeLabel="Desactivar categoría"
         title="Eliminar Categoría"
-        message={`¿Estás seguro de eliminar "${deletingCategory?.name}"? Esta acción no se puede deshacer.`}
+        message={`¿Eliminar "${deletingCategory ? formatCategoryLabel(deletingCategory) : ''}"? Solo use eliminar si la categoría no tiene alumnos ni inscripciones.`}
+        hint="Si tiene alumnos registrados, no se podrá eliminar. En ese caso desactívela: conserva el historial y deja de ofrecerla para nuevos alumnos."
         loading={formLoading}
       />
     </motion.div>

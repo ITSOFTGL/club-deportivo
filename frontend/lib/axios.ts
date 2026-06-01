@@ -1,6 +1,7 @@
 // lib/axios.ts
 import axios from 'axios';
 import { getSession } from 'next-auth/react';
+import { rewriteUsersApiPath } from './rewriteUsersApiPath';
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
@@ -10,8 +11,11 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor - añade token automáticamente
+// Request interceptor - reescribe /users → /usuarios y añade token
 api.interceptors.request.use(async (config) => {
+  if (config.url) {
+    config.url = rewriteUsersApiPath(config.url);
+  }
   try {
     const session = await getSession();
     if (session?.user?.accessToken) {
@@ -30,10 +34,18 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+    const status = error.response?.status;
+    const data = error.response?.data;
+    // Solo redirigir si el 401 viene del API Nest (JWT inválido/expirado).
+    // Algunos proxies devuelven 401 en rutas bloqueadas (ej. /users) sin cuerpo Nest.
+    const isNestAuthError =
+      status === 401 &&
+      data &&
+      typeof data === 'object' &&
+      ('statusCode' in data || 'message' in data);
+
+    if (isNestAuthError && typeof window !== 'undefined') {
+      window.location.href = '/login';
     }
     return Promise.reject(error.response?.data || error);
   }

@@ -53,6 +53,7 @@ export function CategoryFormModal({
 }: CategoryFormModalProps) {
   const [formData, setFormData] = useState<CreateCategoryDto>({
     name: '',
+    groupLabel: '',
     description: '',
     type: 'FOOTBALL',
     monthlyPrice: 0,
@@ -60,6 +61,7 @@ export function CategoryFormModal({
     minAge: undefined,
     maxAge: undefined,
     requiresEquipment: false,
+    isActive: true,
     branchId: '',
     shifts: [],
   });
@@ -77,6 +79,7 @@ export function CategoryFormModal({
       
       setFormData({
         name: category.name || '',
+        groupLabel: category.groupLabel || '',
         description: category.description || '',
         type: category.type || 'FOOTBALL',
         monthlyPrice: category.monthlyPrice || 0,
@@ -84,12 +87,14 @@ export function CategoryFormModal({
         minAge: category.minAge,
         maxAge: category.maxAge,
         requiresEquipment: category.requiresEquipment || false,
+        isActive: category.isActive !== false,
         branchId: category.branchId || '',
         shifts: categoryShifts,
       });
     } else {
       setFormData({
         name: '',
+        groupLabel: '',
         description: '',
         type: 'FOOTBALL',
         monthlyPrice: 0,
@@ -97,6 +102,7 @@ export function CategoryFormModal({
         minAge: undefined,
         maxAge: undefined,
         requiresEquipment: false,
+        isActive: true,
         branchId: '',
         shifts: [],
       });
@@ -201,8 +207,43 @@ export function CategoryFormModal({
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
                       required
-                      placeholder="Ej: Sub 6, Sub 7, Juvenil"
+                      placeholder="Ej: Sub 12, Juvenil"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Grupo / sección (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.groupLabel || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, groupLabel: e.target.value })
+                      }
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#7c0613] focus:border-transparent"
+                      placeholder="Ej: Grupo A, Grupo B, Cupo tarde"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use esto si en la misma sucursal necesita dos filas con el mismo
+                      nombre (más alumnos, dos grupos).
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 text-xs text-blue-900 dark:text-blue-100 space-y-1">
+                    <p className="font-semibold">¿Cómo organizar un club con varias sedes?</p>
+                    <p>
+                      <strong>Otra sucursal:</strong> puede repetir el nombre (ej. Sub 12 en
+                      Norte y Sub 12 en Sur).
+                    </p>
+                    <p>
+                      <strong>Misma sucursal, mañana y tarde:</strong> una sola categoría y
+                      marque varios turnos abajo; cada turno tiene cupos aparte.
+                    </p>
+                    <p>
+                      <strong>Misma sucursal, mismo horario, dos grupos:</strong> cree dos
+                      categorías con el mismo nombre y grupo distinto (Grupo A / Grupo B).
+                    </p>
                   </div>
 
                   <div>
@@ -300,11 +341,6 @@ export function CategoryFormModal({
                           ))}
                         </select>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 col-span-2">
-                        Puede repetir el nombre (ej. Sub 10) en cada sucursal. En la misma
-                        sucursal marque varios turnos (mañana/tarde) abajo: cada turno queda
-                        separado y los alumnos no se mezclan.
-                      </p>
                     </div>
                   </div>
 
@@ -336,6 +372,30 @@ export function CategoryFormModal({
                       />
                     </div>
                   </div>
+
+                  {category && (
+                    <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-600 p-3 bg-gray-50 dark:bg-gray-700/40">
+                      <input
+                        type="checkbox"
+                        id="isActive"
+                        checked={formData.isActive !== false}
+                        onChange={(e) =>
+                          setFormData({ ...formData, isActive: e.target.checked })
+                        }
+                        className="w-4 h-4 text-[#7c0613] focus:ring-[#7c0613] border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor="isActive"
+                        className="ml-2 text-sm text-gray-700 dark:text-gray-300"
+                      >
+                        <span className="font-medium">Categoría activa</span>
+                        <span className="block text-xs text-gray-500 mt-0.5">
+                          Si la desactiva, no se borran los alumnos; deja de usarse para
+                          nuevas inscripciones. Preferible a eliminar si ya tiene alumnos.
+                        </span>
+                      </label>
+                    </div>
+                  )}
 
                   <div className="flex items-center">
                     <input

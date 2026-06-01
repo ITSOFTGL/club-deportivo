@@ -34,7 +34,12 @@ export const useUsersStore = create<UsersState>((set) => ({
       const data = await usersApi.getAll();
       set({ users: Array.isArray(data) ? data : [], loading: false });
     } catch (error: unknown) {
-      const msg = getApiErrorMessage(error, 'Error al cargar usuarios');
+      let msg = getApiErrorMessage(error, 'Error al cargar usuarios');
+      const status = (error as { statusCode?: number })?.statusCode;
+      if (status === 401) {
+        msg =
+          'No se pudo acceder al módulo de usuarios (401). Cierre sesión, vuelva a entrar y asegúrese de haber desplegado el frontend actualizado (ruta /usuarios).';
+      }
       set({ error: msg, users: [], loading: false });
       toast.error(msg);
     }

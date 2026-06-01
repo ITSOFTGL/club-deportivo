@@ -11,6 +11,9 @@ interface DeleteConfirmModalProps {
   onConfirm: () => void;
   title: string;
   message: string;
+  hint?: string;
+  onAlternative?: () => void;
+  alternativeLabel?: string;
   loading?: boolean;
 }
 
@@ -20,6 +23,9 @@ export function DeleteConfirmModal({
   onConfirm,
   title,
   message,
+  hint,
+  onAlternative,
+  alternativeLabel = 'Desactivar en su lugar',
   loading = false,
 }: DeleteConfirmModalProps) {
   return (
@@ -59,8 +65,13 @@ export function DeleteConfirmModal({
                 </div>
                 
                 <p className="mt-4 text-gray-600 dark:text-gray-300">{message}</p>
+                {hint && (
+                  <p className="mt-3 text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                    {hint}
+                  </p>
+                )}
 
-                <div className="flex gap-3 mt-6">
+                <div className="flex flex-col sm:flex-row gap-3 mt-6">
                   <button
                     onClick={onClose}
                     disabled={loading}
@@ -68,6 +79,16 @@ export function DeleteConfirmModal({
                   >
                     Cancelar
                   </button>
+                  {onAlternative && (
+                    <button
+                      type="button"
+                      onClick={onAlternative}
+                      disabled={loading}
+                      className="flex-1 px-4 py-2 border border-[#7c0613] text-[#7c0613] dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                    >
+                      {alternativeLabel}
+                    </button>
+                  )}
                   <button
                     onClick={onConfirm}
                     disabled={loading}

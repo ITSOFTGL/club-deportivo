@@ -5,9 +5,30 @@ export interface ShiftCapacity {
   capacity: number;
 }
 
+export function formatCategoryDisplayName(category: {
+  name: string;
+  groupLabel?: string | null;
+}): string {
+  return category.groupLabel?.trim()
+    ? `${category.name} (${category.groupLabel.trim()})`
+    : category.name;
+}
+
+/** Nombre con sucursal (selectores de alumnos, etc.) */
+export function formatCategoryLabel(category: {
+  name: string;
+  groupLabel?: string | null;
+  branch?: { name?: string };
+  branchId?: string;
+}): string {
+  const base = formatCategoryDisplayName(category);
+  return category.branch?.name ? `${base} — ${category.branch.name}` : base;
+}
+
 export interface Category {
   id: string;
   name: string;
+  groupLabel?: string;
   description?: string;
   type: string;
   monthlyPrice: number;
@@ -34,7 +55,9 @@ export interface Category {
 
 export interface CreateCategoryDto {
   name: string;
+  groupLabel?: string;
   description?: string;
+  isActive?: boolean;
   type: string;
   monthlyPrice: number;
   maxCapacity?: number;

@@ -132,7 +132,6 @@ export function UserFormModal({
       dataToSend.password = formData.password;
     }
     
-    console.log('📤 Enviando usuario:', dataToSend);
     const success = await onSubmit(dataToSend);
     if (success) {
       onClose();

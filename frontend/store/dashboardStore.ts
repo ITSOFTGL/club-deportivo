@@ -1,6 +1,7 @@
 // store/dashboardStore.ts
 import { create } from 'zustand';
 import api from '@/lib/axios';
+import { USERS_API_BASE } from '@/lib/api/users';
 import toast from 'react-hot-toast';
 
 interface DashboardStats {
@@ -49,7 +50,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       const [students, categories, users, payments] = await Promise.all([
         api.get('/students').catch(() => ({ data: [] })),
         api.get('/categories').catch(() => ({ data: [] })),
-        api.get('/users').catch(() => ({ data: [] })),
+        api.get(USERS_API_BASE).catch(() => []),
         api.get('/payments').catch(() => ({ data: [] })),
       ]);
 
