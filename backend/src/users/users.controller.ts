@@ -39,8 +39,6 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Lista de usuarios obtenida exitosamente' })
   @ApiResponse({ status: 401, description: 'No autorizado' })
   findAll(@CurrentUser() actor: AuthUser) {
-    console.log('📝 Usuario en findAll:', actor); // ← Agregar log temporal
-    console.log('📝 Role:', actor?.role); // ← Agregar log temporal
     return this.users.findAll(actor);
   }
 
@@ -57,7 +55,6 @@ export class UsersController {
   @ApiOperation({ summary: 'Crear un nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
   create(@Body() dto: CreateUserDto, @CurrentUser() actor: AuthUser) {
-    console.log('📝 Creando usuario, actor:', actor); // ← Agregar log temporal
     return this.users.create(dto, actor);
   }
 

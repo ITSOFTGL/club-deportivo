@@ -12,19 +12,34 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 export class CategoriesService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  private normalizeCategoryData<T extends CreateCategoryDto | UpdateCategoryDto>(
+    data: T,
+  ): T {
+    const normalized = { ...data } as T & { groupLabel?: string };
+    if ('groupLabel' in normalized && normalized.groupLabel !== undefined) {
+      normalized.groupLabel = normalized.groupLabel.trim();
+    }
+    return normalized;
+  }
+
   async create(createCategoryDto: CreateCategoryDto) {
-    const { shifts, ...categoryData } = createCategoryDto;
+    const { shifts, ...raw } = createCategoryDto;
+    const categoryData = this.normalizeCategoryData(raw);
 
     let category;
     try {
       category = await this.prismaService.prisma.category.create({
-        data: categoryData,
+        data: {
+          ...categoryData,
+          groupLabel: categoryData.groupLabel ?? '',
+          isActive: categoryData.isActive ?? true,
+        },
       });
     } catch (e: unknown) {
       const code = (e as { code?: string })?.code;
       if (code === 'P2002') {
         throw new ConflictException(
-          'Ya existe esa categoría en esta sucursal. Use el mismo nombre en otra sede creando otra fila con la otra sucursal.',
+          'Ya existe esa categoría en esta sucursal con el mismo grupo/sección. Use otro grupo (ej. "Grupo B") o otra sucursal.',
         );
       }
       throw e;
@@ -119,15 +134,31 @@ export class CategoriesService {
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
-    const { shifts, ...categoryData } = updateCategoryDto;
+    const { shifts, ...raw } = updateCategoryDto;
+    const categoryData = this.normalizeCategoryData(raw);
 
     const existingCategory = await this.findOne(id);
 
-    // Actualizar la categoría
-    const category = await this.prismaService.prisma.category.update({
-      where: { id },
-      data: categoryData,
-    });
+    let category;
+    try {
+      category = await this.prismaService.prisma.category.update({
+        where: { id },
+        data: {
+          ...categoryData,
+          ...(categoryData.groupLabel !== undefined
+            ? { groupLabel: categoryData.groupLabel }
+            : {}),
+        },
+      });
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code;
+      if (code === 'P2002') {
+        throw new ConflictException(
+          'Ya existe esa categoría en esta sucursal con el mismo grupo/sección.',
+        );
+      }
+      throw e;
+    }
 
     // Si se enviaron turnos, actualizar las relaciones
     if (shifts !== undefined) {
@@ -176,12 +207,42 @@ export class CategoriesService {
   }
 
   async remove(id: string) {
-    await this.prismaService.prisma.categoryShift.deleteMany({
+    const category = await this.findOne(id);
+
+    const studentCount = await this.prismaService.prisma.student.count({
       where: { categoryId: id },
     });
+    if (studentCount > 0) {
+      throw new ConflictException(
+        `No se puede eliminar "${category.name}": tiene ${studentCount} alumno(s) registrados en esta categoría. Reasigne los alumnos a otra categoría o desactívela en lugar de eliminarla.`,
+      );
+    }
 
-    return this.prismaService.prisma.category.delete({
-      where: { id },
+    const enrollmentCount = await this.prismaService.prisma.enrollment.count({
+      where: { categoryShift: { categoryId: id } },
     });
+    if (enrollmentCount > 0) {
+      throw new ConflictException(
+        `No se puede eliminar "${category.name}": tiene ${enrollmentCount} inscripción(es) asociadas. Desactívela si ya no la utiliza.`,
+      );
+    }
+
+    try {
+      await this.prismaService.prisma.categoryShift.deleteMany({
+        where: { categoryId: id },
+      });
+
+      return await this.prismaService.prisma.category.delete({
+        where: { id },
+      });
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code;
+      if (code === 'P2003') {
+        throw new ConflictException(
+          `No se puede eliminar "${category.name}" porque tiene registros vinculados. Desactívela si ya no la utiliza.`,
+        );
+      }
+      throw e;
+    }
   }
 }

@@ -240,6 +240,8 @@ model Branch {
 model Category {
   id          String        @id @default(cuid())
   name        String
+  /** Ej. "Grupo A", "B" — permite repetir nombre en la misma sucursal */
+  groupLabel  String        @default("")
   description String?
   type        CategoryType  @default(FOOTBALL)
   monthlyPrice Float
@@ -261,7 +263,7 @@ model Category {
   students        Student[]
   events          Event[]
   
-  @@unique([name, branchId])
+  @@unique([name, branchId, groupLabel])
   @@index([type])
   @@index([isActive])
   @@index([branchId])

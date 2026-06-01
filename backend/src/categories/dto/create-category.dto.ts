@@ -18,6 +18,10 @@ export class CreateCategoryDto {
 
   @IsOptional()
   @IsString()
+  groupLabel?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
@@ -46,6 +50,10 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsBoolean()
   requiresEquipment?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 
   @IsString()
   branchId!: string;

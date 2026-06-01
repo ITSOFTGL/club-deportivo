@@ -140,10 +140,17 @@ async function main() {
   console.log('\n📋 Creando categorías...');
 
   const sub6 = await prisma.category.upsert({
-    where: { name: 'Sub 6' },
+    where: {
+      name_branchId_groupLabel: {
+        name: 'Sub 6',
+        branchId: branchCentral.id,
+        groupLabel: '',
+      },
+    },
     update: {},
     create: {
       name: 'Sub 6',
+      groupLabel: '',
       description: 'Categoría para niños de 5-6 años',
       type: CategoryType.SPORT,
       monthlyPrice: 200,
@@ -156,10 +163,17 @@ async function main() {
   });
 
   const sub7 = await prisma.category.upsert({
-    where: { name: 'Sub 7' },
+    where: {
+      name_branchId_groupLabel: {
+        name: 'Sub 7',
+        branchId: branchCentral.id,
+        groupLabel: '',
+      },
+    },
     update: {},
     create: {
       name: 'Sub 7',
+      groupLabel: '',
       description: 'Categoría para niños de 6-7 años',
       type: CategoryType.SPORT,
       monthlyPrice: 200,
