@@ -256,10 +256,10 @@ export function StudentFormModal({
     if (formData.school && formData.school.trim()) dataToSend.school = formData.school;
     if (formData.grade && formData.grade.trim()) dataToSend.grade = formData.grade;
     if (formData.discountPercent !== '' && formData.discountPercent != null) {
-      dataToSend.discountPercent = Number(formData.discountPercent);
+      (dataToSend as any).discountPercent = Number(formData.discountPercent);
     }
     if (formData.monthlyFeeOverride !== '' && formData.monthlyFeeOverride != null) {
-      dataToSend.monthlyFeeOverride = Number(formData.monthlyFeeOverride);
+      (dataToSend as any).monthlyFeeOverride = Number(formData.monthlyFeeOverride);
     }
 
     const result = await onSubmit(dataToSend);
