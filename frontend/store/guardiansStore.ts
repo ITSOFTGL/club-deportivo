@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { Guardian, CreateGuardianDto, UpdateGuardianDto } from '@/lib/api/guardians';
 import guardiansApi from '@/lib/api/guardians';
 import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 interface GuardiansState {
   guardians: Guardian[];
@@ -32,7 +33,7 @@ export const useGuardiansStore = create<GuardiansState>((set, get) => ({
     } catch (error: any) {
       console.error('Error fetching guardians:', error);
       set({ error: error.message, guardians: [], loading: false });
-      toast.error('Error al cargar apoderados');
+      toast.error(getApiErrorMessage(error, 'Error al cargar apoderados'));
     }
   },
 
@@ -48,7 +49,7 @@ export const useGuardiansStore = create<GuardiansState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error creating guardian:', error);
-      toast.error(error?.message || 'Error al crear apoderado');
+      toast.error(getApiErrorMessage(error, 'Error al crear apoderado'));
       set({ loading: false });
       return false;
     }
@@ -66,7 +67,7 @@ export const useGuardiansStore = create<GuardiansState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error updating guardian:', error);
-      toast.error(error?.message || 'Error al actualizar apoderado');
+      toast.error(getApiErrorMessage(error, 'Error al actualizar apoderado'));
       set({ loading: false });
       return false;
     }

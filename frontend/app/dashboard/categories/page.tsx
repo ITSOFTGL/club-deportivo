@@ -26,8 +26,12 @@ import {
   formatCategoryLabel,
 } from '@/lib/api/categories';
 import { Branch } from '@/lib/api/branches';
+import { useSession } from 'next-auth/react';
+import { canDeleteRecords } from '@/lib/permissions';
 
 export default function CategoriesPage() {
+  const { data: session } = useSession();
+  const allowDelete = canDeleteRecords(session?.user?.role);
   const {
     categories,
     loading,
@@ -302,6 +306,7 @@ export default function CategoriesPage() {
                         >
                           <PencilIcon className="w-4 h-4" />
                         </button>
+                        {allowDelete && (
                         <button
                           onClick={() => handleDeleteClick(category)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -309,6 +314,7 @@ export default function CategoriesPage() {
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
+                        )}
                       </td>
                     </motion.tr>
                   ))}

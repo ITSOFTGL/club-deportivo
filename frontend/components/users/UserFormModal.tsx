@@ -308,6 +308,13 @@ export function UserFormModal({
                         ))}
                       </select>
                     </div>
+                    {formData.role === 'PARENT' && !user && (
+                      <p className="md:col-span-2 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        Para padres con hijos en el club, use <strong>Apoderados</strong> al registrar
+                        al alumno: ahí se vincula el hijo y se crea el acceso. Este formulario solo
+                        crea la cuenta de usuario.
+                      </p>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Rol *

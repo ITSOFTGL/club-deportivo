@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { Student, CreateStudentDto, UpdateStudentDto } from '@/lib/api/students';
 import studentsApi from '@/lib/api/students';
 import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 interface StudentsState {
   students: Student[];
@@ -11,7 +12,7 @@ interface StudentsState {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   fetchStudents: () => Promise<void>;
-  createStudent: (data: CreateStudentDto) => Promise<boolean>;
+  createStudent: (data: CreateStudentDto) => Promise<Student | null>;
   updateStudent: (id: string, data: UpdateStudentDto) => Promise<boolean>;
   deleteStudent: (id: string) => Promise<boolean>;
 }
@@ -32,7 +33,7 @@ export const useStudentsStore = create<StudentsState>((set, get) => ({
     } catch (error: any) {
       console.error('Error fetching students:', error);
       set({ error: error.message, students: [], loading: false });
-      toast.error('Error al cargar alumnos');
+      toast.error(getApiErrorMessage(error, 'Error al cargar alumnos'));
     }
   },
 
@@ -45,12 +46,12 @@ export const useStudentsStore = create<StudentsState>((set, get) => ({
         loading: false,
       }));
       toast.success('Alumno creado exitosamente');
-      return true;
+      return newStudent;
     } catch (error: any) {
       console.error('Error creating student:', error);
-      toast.error(error?.message || 'Error al crear alumno');
+      toast.error(getApiErrorMessage(error, 'Error al crear alumno'));
       set({ loading: false });
-      return false;
+      return null;
     }
   },
 
@@ -66,7 +67,7 @@ export const useStudentsStore = create<StudentsState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error updating student:', error);
-      toast.error(error?.message || 'Error al actualizar alumno');
+      toast.error(getApiErrorMessage(error, 'Error al actualizar alumno'));
       set({ loading: false });
       return false;
     }
@@ -84,7 +85,7 @@ export const useStudentsStore = create<StudentsState>((set, get) => ({
       return true;
     } catch (error: any) {
       console.error('Error deleting student:', error);
-      toast.error(error?.message || 'Error al eliminar alumno');
+      toast.error(getApiErrorMessage(error, 'Error al eliminar alumno'));
       set({ loading: false });
       return false;
     }

@@ -104,12 +104,17 @@ export function GuardianFormModal({
     }
     if (formData.email?.trim()) dataToSend.email = formData.email.trim();
     if (formData.createUserAccount) {
+      if (!formData.email?.trim()) {
+        toast.error('Ingrese el correo para crear la cuenta de acceso');
+        return;
+      }
       const err = requirePassword(formData.password);
       if (err) {
         toast.error(err);
         return;
       }
       dataToSend.createUserAccount = true;
+      dataToSend.email = formData.email.trim();
       dataToSend.password = formData.password;
     }
 
@@ -227,7 +232,7 @@ export function GuardianFormModal({
                   </div>
 
                   {!guardian && (
-                    <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
+                    <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900/40 space-y-3">
                       <label className="flex items-center gap-2 text-sm font-medium">
                         <input
                           type="checkbox"
@@ -237,6 +242,11 @@ export function GuardianFormModal({
                         />
                         Crear cuenta de acceso (rol Padre)
                       </label>
+                      <p className="text-xs text-gray-500">
+                        Recomendado para que el apoderado inicie sesión y vea hijos, pagos y eventos.
+                        Si ya existe un usuario Padre con el mismo correo o documento, se vinculará
+                        automáticamente.
+                      </p>
                       {formData.createUserAccount && (
                         <PasswordField
                           value={formData.password}
@@ -247,7 +257,10 @@ export function GuardianFormModal({
                         />
                       )}
                       {formData.createUserAccount && (
-                        <p className="text-xs text-gray-500">Requiere correo electrónico arriba.</p>
+                        <p className="text-xs text-amber-700">
+                          Obligatorio: correo arriba y contraseña (mín. 6 caracteres, una letra y un
+                          número — ej: Padre123).
+                        </p>
                       )}
                     </div>
                   )}

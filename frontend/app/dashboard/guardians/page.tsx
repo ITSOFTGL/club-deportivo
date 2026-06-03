@@ -3,6 +3,7 @@
 
 import { useSession } from 'next-auth/react';
 import { TeacherGuardiansView } from '@/components/guardians/TeacherGuardiansView';
+import { canDeleteRecords } from '@/lib/permissions';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -51,6 +52,8 @@ export default function GuardiansPage() {
 }
 
 function GuardiansAdminView() {
+  const { data: session } = useSession();
+  const allowDelete = canDeleteRecords(session?.user?.role);
   const { guardians, loading, searchTerm, setSearchTerm, fetchGuardians, createGuardian, updateGuardian, deleteGuardian } = useGuardiansStore();
   const { students, fetchStudents } = useStudentsStore();
   
@@ -272,6 +275,7 @@ function GuardiansAdminView() {
                         >
                           <PencilIcon className="w-4 h-4" />
                         </button>
+                        {allowDelete && (
                         <button
                           onClick={() => {
                             setDeletingGuardian(guardian);
@@ -282,6 +286,7 @@ function GuardiansAdminView() {
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
+                        )}
                       </td>
                     </motion.tr>
                   ))}

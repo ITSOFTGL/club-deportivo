@@ -16,6 +16,9 @@ api.interceptors.request.use(async (config) => {
   if (config.url) {
     config.url = rewriteUsersApiPath(config.url);
   }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
   try {
     const session = await getSession();
     if (session?.user?.accessToken) {

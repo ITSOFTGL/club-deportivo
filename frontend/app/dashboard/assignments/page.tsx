@@ -21,6 +21,8 @@ import categoryShiftsApi, {
 } from '@/lib/api/category-shifts';
 import { TeacherAssignmentFormModal } from '@/components/teacher-assignments/TeacherAssignmentFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
+import { useSession } from 'next-auth/react';
+import { canDeleteRecords } from '@/lib/permissions';
 import { CreateTeacherAssignmentDto } from '@/lib/api/teacher-assignments';
 
 // Definir tipos locales
@@ -32,6 +34,8 @@ interface Teacher {
 }
 
 export default function AssignmentsPage() {
+  const { data: session } = useSession();
+  const allowDelete = canDeleteRecords(session?.user?.role);
   const { assignments, loading, searchTerm, setSearchTerm, fetchAssignments, createAssignment, updateAssignment, deleteAssignment } = useTeacherAssignmentsStore();
   const { users, fetchUsers } = useUsersStore();
   const [categoryShifts, setCategoryShifts] = useState<CategoryShift[]>([]);
@@ -119,7 +123,10 @@ export default function AssignmentsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Asignaciones</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Asigna profesores a categorías y turnos</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Un profesor puede tener varias categorías (sucursales y horarios distintos). Agregue una
+            asignación por cada grupo.
+          </p>
         </div>
         <button
           onClick={() => {
@@ -263,6 +270,7 @@ export default function AssignmentsPage() {
                         >
                           <PencilIcon className="w-4 h-4" />
                         </button>
+                        {allowDelete && (
                         <button
                           onClick={() => {
                             setDeletingAssignment(assignment);
@@ -273,6 +281,7 @@ export default function AssignmentsPage() {
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
+                        )}
                       </td>
                     </motion.tr>
                   ))}
@@ -293,6 +302,7 @@ export default function AssignmentsPage() {
         assignment={editingAssignment}
         teachers={teachers}
         categoryShifts={categoryShifts}
+        existingAssignments={assignments}
         onSubmit={handleSubmit}
         loading={formLoading}
       />

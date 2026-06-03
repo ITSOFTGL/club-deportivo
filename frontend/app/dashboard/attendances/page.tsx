@@ -1,4 +1,3 @@
-// app/dashboard/attendances/page.tsx
 'use client';
 
 import { useSession } from 'next-auth/react';
@@ -6,6 +5,8 @@ import { useState } from 'react';
 import { TeacherAttendanceView } from '@/components/attendances/TeacherAttendanceView';
 import { TeacherAttendanceHistory } from '@/components/attendances/TeacherAttendanceHistory';
 import { AdminAttendanceView } from '@/components/attendances/AdminAttendanceView';
+import { ParentAttendanceView } from '@/components/attendances/ParentAttendanceView';
+import { AttendanceReportsPanel } from '@/components/attendances/AttendanceReportsPanel';
 
 export default function AttendancesPage() {
   const { data: session, status } = useSession();
@@ -19,49 +20,56 @@ export default function AttendancesPage() {
     );
   }
 
-  // Profesor ve su vista para pasar lista
+  if (userRole === 'PARENT') {
+    return <ParentAttendanceView />;
+  }
+
   if (userRole === 'TEACHER') {
     return <TeacherAttendancesTabs />;
   }
 
-  // Super Admin, Admin y otros roles ven el reporte completo
-  return <AdminAttendanceView />;
+  return (
+    <div className="space-y-0">
+      <AdminAttendanceView />
+      <AttendanceReportsPanel />
+    </div>
+  );
 }
 
 function TeacherAttendancesTabs() {
-  const [tab, setTab] = useState<'list' | 'history'>('list');
+  const [tab, setTab] = useState<'list' | 'history' | 'reports'>('list');
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Asistencias</h1>
-        <p className="text-gray-500 mt-1">Pasa lista y consulta registros por fecha</p>
+        <p className="text-gray-500 mt-1">Pasa lista, historial y reportes de sus categorías</p>
       </div>
-      <div className="flex gap-2 border-b border-gray-200">
-        <button
-          type="button"
-          onClick={() => setTab('list')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            tab === 'list'
-              ? 'border-[#7c0613] text-[#7c0613]'
-              : 'border-transparent text-gray-500'
-          }`}
-        >
-          Pasar lista
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('history')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-            tab === 'history'
-              ? 'border-[#7c0613] text-[#7c0613]'
-              : 'border-transparent text-gray-500'
-          }`}
-        >
-          Historial
-        </button>
+      <div className="flex gap-2 border-b border-gray-200 flex-wrap">
+        {(
+          [
+            ['list', 'Pasar lista'],
+            ['history', 'Historial'],
+            ['reports', 'Reportes / inasistencias'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+              tab === id
+                ? 'border-[#7c0613] text-[#7c0613]'
+                : 'border-transparent text-gray-500'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
-      {tab === 'list' ? <TeacherAttendanceView /> : <TeacherAttendanceHistory />}
+      {tab === 'list' && <TeacherAttendanceView />}
+      {tab === 'history' && <TeacherAttendanceHistory />}
+      {tab === 'reports' && <AttendanceReportsPanel />}
     </div>
   );
 }

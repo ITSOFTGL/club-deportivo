@@ -49,9 +49,7 @@ const paymentsApi = {
   uploadQr: (file: File): Promise<{ paymentQrUrl: string }> => {
     const form = new FormData();
     form.append('qr', file);
-    return api.post('/payments/config/qr', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post('/payments/config/qr', form);
   },
   getAll: (): Promise<Payment[]> => api.get('/payments'),
   getByStudent: (studentId: string): Promise<PaymentHistory[]> =>

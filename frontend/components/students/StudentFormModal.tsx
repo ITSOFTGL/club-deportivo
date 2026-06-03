@@ -2,9 +2,16 @@
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
+import { dateInputFromApi, getLocalDateString } from '@/lib/utils/date';
+import { StudentPhotoPicker } from '@/components/students/StudentPhotoPicker';
+import { getApiErrorMessage } from '@/lib/apiError';
+import toast from 'react-hot-toast';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { formatCategoryLabel } from '@/lib/api/categories';
+import { getStudentMonthlyFee } from '@/lib/utils/studentFee';
+import studentsApi from '@/lib/api/students';
+import { StudentAvatar } from '@/components/ui/StudentAvatar';
 
 interface Branch {
   id: string;
@@ -15,6 +22,7 @@ interface Category {
   id: string;
   name: string;
   groupLabel?: string;
+  monthlyPrice?: number;
   branch?: { name?: string };
   isActive?: boolean;
 }
@@ -47,7 +55,10 @@ interface Student {
   parentId?: string;
   branchId: string;
   categoryId: string;
+  enrollmentDate?: string;
   discountPercent?: number;
+  monthlyFeeOverride?: number;
+  profilePhotoUrl?: string;
   status?: string;
 }
 
@@ -71,6 +82,8 @@ interface CreateStudentDto {
   parentId?: string;
   branchId: string;
   categoryId: string;
+  enrollmentDate?: string;
+  monthlyFeeOverride?: number;
 }
 
 const genders = [
@@ -97,7 +110,7 @@ interface StudentFormModalProps {
   branches: Branch[];
   categories: Category[];
   parents: Parent[];
-  onSubmit: (data: CreateStudentDto) => Promise<boolean>;
+  onSubmit: (data: CreateStudentDto) => Promise<{ success: boolean; studentId?: string }>;
   loading?: boolean;
 }
 
@@ -113,6 +126,7 @@ export function StudentFormModal({
 }: StudentFormModalProps) {
   const isQuickRegister = !student;
   const [showMoreFields, setShowMoreFields] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [formData, setFormData] = useState<any>({
     name: '',
     lastName: '',
@@ -133,7 +147,9 @@ export function StudentFormModal({
     parentId: '',
     branchId: '',
     categoryId: '',
+    enrollmentDate: getLocalDateString(),
     discountPercent: 0,
+    monthlyFeeOverride: '',
   });
 
   useEffect(() => {
@@ -141,7 +157,7 @@ export function StudentFormModal({
       setFormData({
         name: student.name || '',
         lastName: student.lastName || '',
-        birthDate: student.birthDate ? student.birthDate.split('T')[0] : '',
+        birthDate: dateInputFromApi(student.birthDate),
         documentId: student.documentId || '',
         gender: student.gender || '',
         weight: student.weight?.toString() || '',
@@ -158,8 +174,13 @@ export function StudentFormModal({
         parentId: student.parentId || '',
         branchId: student.branchId || '',
         categoryId: student.categoryId || '',
+        enrollmentDate: student.enrollmentDate
+          ? dateInputFromApi(student.enrollmentDate)
+          : getLocalDateString(),
         discountPercent: student.discountPercent ?? 0,
+        monthlyFeeOverride: student.monthlyFeeOverride?.toString() ?? '',
       });
+      setPhotoFile(null);
     } else {
       setFormData({
         name: '',
@@ -181,10 +202,24 @@ export function StudentFormModal({
         parentId: '',
         branchId: '',
         categoryId: '',
+        enrollmentDate: getLocalDateString(),
         discountPercent: 0,
+        monthlyFeeOverride: '',
       });
+      setPhotoFile(null);
     }
   }, [student, isOpen]);
+
+  const selectedCategory = categories.find((c) => c.id === formData.categoryId);
+  const categoryPrice = selectedCategory?.monthlyPrice ?? 0;
+  const feePreview = getStudentMonthlyFee({
+    category: { monthlyPrice: categoryPrice },
+    discountPercent: Number(formData.discountPercent) || 0,
+    monthlyFeeOverride:
+      formData.monthlyFeeOverride !== '' && formData.monthlyFeeOverride != null
+        ? Number(formData.monthlyFeeOverride)
+        : null,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,6 +232,10 @@ export function StudentFormModal({
       branchId: formData.branchId,
       categoryId: formData.categoryId,
     };
+
+    if (formData.enrollmentDate?.trim()) {
+      dataToSend.enrollmentDate = formData.enrollmentDate;
+    }
 
     if (formData.parentId?.trim()) {
       dataToSend.parentId = formData.parentId;
@@ -217,13 +256,25 @@ export function StudentFormModal({
     if (formData.school && formData.school.trim()) dataToSend.school = formData.school;
     if (formData.grade && formData.grade.trim()) dataToSend.grade = formData.grade;
     if (formData.discountPercent !== '' && formData.discountPercent != null) {
-      (dataToSend as CreateStudentDto & { discountPercent?: number }).discountPercent =
-        Number(formData.discountPercent);
+      dataToSend.discountPercent = Number(formData.discountPercent);
+    }
+    if (formData.monthlyFeeOverride !== '' && formData.monthlyFeeOverride != null) {
+      dataToSend.monthlyFeeOverride = Number(formData.monthlyFeeOverride);
     }
 
-    console.log('📤 Enviando alumno:', dataToSend);
-    const success = await onSubmit(dataToSend);
-    if (success) {
+    const result = await onSubmit(dataToSend);
+    const targetId = result.studentId ?? student?.id;
+    if (result.success && photoFile && targetId) {
+      try {
+        await studentsApi.uploadPhoto(targetId, photoFile);
+        toast.success('Foto de perfil guardada');
+      } catch (err) {
+        toast.error(
+          getApiErrorMessage(err, 'Alumno guardado, pero no se pudo subir la foto'),
+        );
+      }
+    }
+    if (result.success) {
       onClose();
     }
   };
@@ -326,6 +377,59 @@ export function StudentFormModal({
                             ))}
                         </select>
                       </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha de ingreso / inscripción *
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.enrollmentDate}
+                          onChange={(e) => updateField('enrollmentDate', e.target.value)}
+                          className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          La mensualidad se calcula desde esta fecha, no desde el día del pago.
+                        </p>
+                      </div>
+                      {formData.categoryId && categoryPrice > 0 && (
+                        <div className="md:col-span-2 rounded-lg border border-green-100 bg-green-50 p-3 space-y-3">
+                          <p className="text-sm font-medium text-green-900">Mensualidad de este alumno</p>
+                          <div className="grid md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Descuento (%)
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={formData.discountPercent}
+                                onChange={(e) => updateField('discountPercent', e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg border"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                O monto fijo mensual (Bs)
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={formData.monthlyFeeOverride}
+                                onChange={(e) => updateField('monthlyFeeOverride', e.target.value)}
+                                placeholder={`Ej: 200 (categoría Bs ${categoryPrice})`}
+                                className="w-full px-3 py-2 rounded-lg border"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-sm text-green-800">
+                            Tarifa categoría: <strong>Bs {categoryPrice}</strong> → Pagará:{' '}
+                            <strong>Bs {feePreview}</strong> / mes
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -639,6 +743,18 @@ export function StudentFormModal({
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Fecha de ingreso / inscripción *
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.enrollmentDate}
+                          onChange={(e) => updateField('enrollmentDate', e.target.value)}
+                          className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-[#7c0613]"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Descuento mensualidad (%)
                         </label>
                         <input
@@ -659,6 +775,13 @@ export function StudentFormModal({
                   )}
                   </>
                   )}
+
+                  <StudentPhotoPicker
+                    name={formData.name}
+                    lastName={formData.lastName}
+                    existingPhotoUrl={student?.profilePhotoUrl}
+                    onFileChange={setPhotoFile}
+                  />
 
                   {/* Botones */}
                   <div className="flex gap-3 pt-4">

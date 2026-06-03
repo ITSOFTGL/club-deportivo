@@ -20,6 +20,7 @@ import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { User, CreateUserDto } from '@/lib/api/users';
 import toast from 'react-hot-toast';
 import { requirePassword } from '@/lib/utils/password';
+import { canDeleteRecords } from '@/lib/permissions';
 
 const roleColors: Record<string, string> = {
   SUPER_ADMIN: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
@@ -54,6 +55,7 @@ export default function UsersPage() {
   const canManage = ['SUPER_ADMIN', 'ADMIN'].includes(
     session?.user?.role ?? '',
   );
+  const allowDelete = canDeleteRecords(session?.user?.role);
 
   const {
     users,
@@ -126,7 +128,7 @@ export default function UsersPage() {
 
   const handleResetPassword = async (userId: string) => {
     const newPassword = prompt(
-      'Nueva contraseña:\n(mín. 8 caracteres, 1 mayúscula, 2 números, 1 especial)',
+      'Nueva contraseña:\n(mín. 6 caracteres, una letra y un número — ej: Profesor1)',
     );
     if (!newPassword) return;
     const err = requirePassword(newPassword);
@@ -137,7 +139,9 @@ export default function UsersPage() {
     setResettingPassword(userId);
     const success = await resetPassword(userId, newPassword);
     setResettingPassword(null);
-    if (success) toast.success('Contraseña actualizada');
+    if (!success) {
+      toast.error('No se pudo cambiar la contraseña. Revise los requisitos.');
+    }
   };
 
   const handleChangeRole = async (userId: string, currentRole: string) => {
@@ -327,6 +331,7 @@ export default function UsersPage() {
                         >
                           <PencilIcon className="w-4 h-4" />
                         </button>
+                        {allowDelete && (
                         <button
                           onClick={() => {
                             setDeletingUser(user);
@@ -337,6 +342,7 @@ export default function UsersPage() {
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
+                        )}
                       </td>
                     </motion.tr>
                   ))}

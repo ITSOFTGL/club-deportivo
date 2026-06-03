@@ -29,10 +29,9 @@ export function PasswordField({
   const { checks, valid } = useMemo(() => validatePassword(value), [value]);
 
   const rules = [
-    { key: 'minLength', label: '8 caracteres o más', ok: checks.minLength },
-    { key: 'uppercase', label: '1 letra mayúscula', ok: checks.uppercase },
-    { key: 'twoNumbers', label: '2 números', ok: checks.twoNumbers },
-    { key: 'special', label: '1 carácter especial (!@#…)', ok: checks.special },
+    { key: 'minLength', label: '6 caracteres o más', ok: checks.minLength },
+    { key: 'hasLetter', label: 'Al menos una letra', ok: checks.hasLetter },
+    { key: 'hasNumber', label: 'Al menos un número', ok: checks.hasNumber },
   ];
 
   return (
@@ -50,7 +49,7 @@ export function PasswordField({
           placeholder={placeholder}
           required={required}
           autoComplete="new-password"
-          minLength={8}
+          minLength={6}
         />
         <button
           type="button"

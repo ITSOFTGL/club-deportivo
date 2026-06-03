@@ -23,6 +23,8 @@ import {
   parseLocalDateInput,
   resolvePaymentQrUrl,
 } from '@/lib/utils/membershipDates';
+import { getStudentMonthlyFee } from '@/lib/utils/studentFee';
+import studentsApi, { type Student } from '@/lib/api/students';
 
 const methodLabels: Record<string, string> = {
   QR: 'QR',
@@ -37,6 +39,13 @@ const statusLabels: Record<string, string> = {
   EXPIRED: 'Vencido',
   REFUNDED: 'Reembolsado',
   CANCELLED: 'Cancelado',
+};
+
+const membershipAlertLabels: Record<string, string> = {
+  EXPIRED: 'Mensualidad vencida',
+  NONE: 'Sin mensualidad activa',
+  LAST_DAY: 'Vence hoy',
+  EXPIRING: 'Próximo a vencer',
 };
 
 export default function PaymentsPage() {
@@ -72,6 +81,8 @@ function PaymentsPageContent() {
   const { data: session } = useSession();
   const role = session?.user?.role || '';
   const isStaffEditor = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const canCollect =
+    role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'COLLECTOR';
 
   const { paymentQrUrl: defaultQrUrl } = useClubConfig();
   const [paymentQrUrl, setPaymentQrUrl] = useState(defaultQrUrl);
@@ -88,14 +99,22 @@ function PaymentsPageContent() {
   const [extendFromDate, setExtendFromDate] = useState(getLocalDateString());
   const [notes, setNotes] = useState('');
   const [proofUrl, setProofUrl] = useState('');
-  const [method, setMethod] = useState<'CASH' | 'QR' | 'CARD' | 'TRANSFER'>('CASH');
+  const [method, setMethod] = useState<'CASH' | 'QR'>('CASH');
   const [submitting, setSubmitting] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [studentsReady, setStudentsReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<'history' | 'debtors'>('history');
+  const [debtors, setDebtors] = useState<Student[]>([]);
+  const [debtorsLoading, setDebtorsLoading] = useState(false);
 
   const selectedStudent = students.find((s) => s.id === studentId);
   const discountPercent = selectedStudent?.discountPercent ?? 0;
-  const monthlyFee = selectedStudent?.category?.monthlyPrice ?? 0;
+  const monthlyFee = selectedStudent
+    ? getStudentMonthlyFee(selectedStudent)
+    : 0;
+  const categoryMonthlyPrice = selectedStudent?.category?.monthlyPrice ?? 0;
+  const hasStudentDiscount =
+    discountPercent > 0 && categoryMonthlyPrice > monthlyFee;
 
   const nextExpiryPreview = useMemo(() => {
     if (!extendFromDate) return '—';
@@ -130,20 +149,42 @@ function PaymentsPageContent() {
     if (!studentId || !selectedStudent) return;
     const base = selectedStudent.membershipPaidUntil
       ? isoToLocalDateKey(selectedStudent.membershipPaidUntil)
-      : getLocalDateString();
+      : selectedStudent.enrollmentDate
+        ? isoToLocalDateKey(selectedStudent.enrollmentDate)
+        : getLocalDateString();
     setExtendFromDate(base);
-  }, [studentId, selectedStudent?.membershipPaidUntil, selectedStudent?.id]);
+  }, [
+    studentId,
+    selectedStudent?.membershipPaidUntil,
+    selectedStudent?.enrollmentDate,
+    selectedStudent?.id,
+  ]);
 
   useEffect(() => {
     if (!studentId) return;
     if (monthlyFee > 0) {
-      const base = monthlyFee * months;
-      const total = base - (base * discountPercent) / 100;
+      const total = monthlyFee * months;
       setAmount(String(Math.round(total * 100) / 100));
     } else if (studentsReady && !amount) {
       setAmount('');
     }
-  }, [studentId, months, monthlyFee, discountPercent, studentsReady]);
+  }, [studentId, months, monthlyFee, studentsReady]);
+
+  useEffect(() => {
+    if (activeTab !== 'debtors' || !canCollect) return;
+    setDebtorsLoading(true);
+    studentsApi
+      .getMembershipAlerts()
+      .then(setDebtors)
+      .catch(() => toast.error('No se pudo cargar deudores / próximos a pagar'))
+      .finally(() => setDebtorsLoading(false));
+  }, [activeTab, canCollect]);
+
+  const openCollect = (id: string) => {
+    setStudentId(id);
+    setShowForm(true);
+    router.replace(`/dashboard/payments?studentId=${id}`, { scroll: false });
+  };
 
   const studentsForSelect = categoryFilter
     ? students.filter((s) => s.categoryId === categoryFilter)
@@ -282,6 +323,80 @@ function PaymentsPageContent() {
         </button>
       </div>
 
+      {canCollect && (
+        <div className="flex gap-2 border-b border-gray-200">
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+              activeTab === 'history'
+                ? 'border-[#7c0613] text-[#7c0613]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Historial
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('debtors')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+              activeTab === 'debtors'
+                ? 'border-[#7c0613] text-[#7c0613]'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Deudores / próximos a pagar
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'debtors' && canCollect && (
+        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[700px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Alumno</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cuota/mes</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {debtorsLoading ? (
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">Cargando...</td></tr>
+              ) : debtors.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">No hay alumnos pendientes de cobro</td></tr>
+              ) : (
+                debtors.map((s) => (
+                  <tr key={s.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{s.name} {s.lastName}</td>
+                    <td className="px-4 py-3 text-sm">{s.category?.name ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-900">
+                        {membershipAlertLabels[s.membershipStatus ?? ''] ?? s.membershipStatus ?? '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">{formatMoney(getStudentMonthlyFee(s))}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => openCollect(s.id)}
+                        className="text-sm font-medium text-[#7c0613] hover:underline"
+                      >
+                        Cobrar
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {stats.map((s) => (
           <div key={s.label} className={`bg-gradient-to-r ${s.color} rounded-xl p-4 text-white shadow-lg`}>
@@ -375,6 +490,8 @@ function PaymentsPageContent() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -453,8 +570,12 @@ function PaymentsPageContent() {
 
               {monthlyFee > 0 && (
                 <p className="text-xs text-gray-500">
-                  Cuota: {formatMoney(monthlyFee)} × {months}
-                  {discountPercent > 0 && ` − ${discountPercent}% desc.`} = {formatMoney(parseFloat(amount || '0'))}
+                  Cuota mensual: {formatMoney(monthlyFee)}
+                  {hasStudentDiscount && categoryMonthlyPrice > 0 && (
+                    <> (categoría {formatMoney(categoryMonthlyPrice)}, −{discountPercent}% ya aplicado)</>
+                  )}
+                  {' '}× {months} {months === 1 ? 'mes' : 'meses'} ={' '}
+                  <strong>{formatMoney(parseFloat(amount || '0'))}</strong>
                 </p>
               )}
 
@@ -480,9 +601,7 @@ function PaymentsPageContent() {
                   className="w-full border rounded-lg px-3 py-2"
                 >
                   <option value="CASH">Efectivo</option>
-                  <option value="QR">QR / Transferencia</option>
-                  <option value="CARD">Tarjeta</option>
-                  <option value="TRANSFER">Transferencia bancaria</option>
+                  <option value="QR">QR</option>
                 </select>
               </div>
 

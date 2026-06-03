@@ -1,4 +1,3 @@
-// app/(auth)/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -8,6 +7,7 @@ import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import ClubLogo from '@/components/ui/ClubLogo';
 import { useClubConfig } from '@/hooks/useClubConfig';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 const showDemoLogin = process.env.NEXT_PUBLIC_SHOW_DEMO_LOGIN === 'true';
 
@@ -19,6 +19,12 @@ const demoCredentials = [
   { role: 'Padre', email: 'padre@club.com', password: '123456' },
 ];
 
+function getApiBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3001'
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { name: clubName } = useClubConfig();
@@ -29,24 +35,51 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!email.trim()) {
+      toast.error('Ingrese su correo electrónico');
+      return;
+    }
+    if (!password) {
+      toast.error('Ingrese su contraseña');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        toast.error(
+          getApiErrorMessage(data, 'Correo o contraseña incorrectos'),
+        );
+        setLoading(false);
+        return;
+      }
+
       const result = await signIn('credentials', {
-        email,
+        email: email.trim(),
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        toast.error('Credenciales incorrectas');
+        toast.error('No se pudo iniciar sesión. Intente de nuevo.');
       } else {
         toast.success('Bienvenido');
         router.push('/dashboard');
         router.refresh();
       }
     } catch {
-      toast.error('Error al iniciar sesión');
+      toast.error(
+        'No se pudo conectar con el servidor. Verifique su conexión o contacte al administrador.',
+      );
     } finally {
       setLoading(false);
     }

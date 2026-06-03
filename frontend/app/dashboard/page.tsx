@@ -16,6 +16,8 @@ import { useDashboardStore } from '@/store/dashboardStore';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { RevenueChart } from '@/components/dashboard/RevenueChart';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { BirthdayBanner } from '@/components/dashboard/BirthdayBanner';
+import { canViewRevenueTotals } from '@/lib/permissions';
 
 // Configuración por rol
 const roleConfig = {
@@ -25,8 +27,8 @@ const roleConfig = {
     showActivity: true,
   },
   ADMIN: {
-    stats: ['students', 'payments', 'categories'],
-    showChart: true,
+    stats: ['students', 'categories'],
+    showChart: false,
     showActivity: true,
   },
   TEACHER: {
@@ -51,6 +53,7 @@ export default function DashboardPage() {
   const { stats, loading, fetchStats } = useDashboardStore();
   const role = session?.user?.role || 'PARENT';
   const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.PARENT;
+  const showRevenue = canViewRevenueTotals(role);
 
   useEffect(() => {
     fetchStats();
@@ -124,6 +127,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      <BirthdayBanner role={role} />
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {getStatsCards().map((stat, index) => (
@@ -132,7 +137,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Section */}
-      {config.showChart && (
+      {config.showChart && showRevenue && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <RevenueChart data={stats.monthlyRevenue} />
           
@@ -142,12 +147,14 @@ export default function DashboardPage() {
               Resumen Rápido
             </h3>
             <div className="space-y-4">
+              {showRevenue && (
               <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <span className="text-gray-600 dark:text-gray-300">Total Recaudado</span>
                 <span className="text-2xl font-bold text-green-600">
                   Bs. {stats.monthlyRevenue.reduce((sum, m) => sum + m.revenue, 0).toLocaleString()}
                 </span>
               </div>
+              )}
               <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <span className="text-gray-600 dark:text-gray-300">Alumnos por Categoría</span>
                 <span className="text-lg font-semibold text-gray-900 dark:text-white">

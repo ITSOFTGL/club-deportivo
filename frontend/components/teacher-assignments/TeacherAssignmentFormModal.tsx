@@ -21,6 +21,7 @@ interface TeacherAssignmentFormModalProps {
   assignment?: TeacherAssignment | null;
   teachers: Teacher[];
   categoryShifts: CategoryShift[];
+  existingAssignments?: TeacherAssignment[];
   onSubmit: (data: CreateTeacherAssignmentDto) => Promise<boolean>;
   loading?: boolean;
 }
@@ -37,6 +38,7 @@ export function TeacherAssignmentFormModal({
   assignment,
   teachers,
   categoryShifts,
+  existingAssignments = [],
   onSubmit,
   loading = false,
 }: TeacherAssignmentFormModalProps) {
@@ -72,6 +74,12 @@ export function TeacherAssignmentFormModal({
       onClose();
     }
   };
+
+  const teacherAssignments = formData.teacherId
+    ? existingAssignments.filter(
+        (a) => a.teacherId === formData.teacherId && a.isActive !== false,
+      )
+    : [];
 
   const getCategoryShiftName = (id: string) => {
     const cs = categoryShifts.find(c => c.id === id);
@@ -126,6 +134,10 @@ export function TeacherAssignmentFormModal({
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg px-3 py-2">
+                    Un mismo profesor puede tener varias categorías en distintas sucursales y
+                    horarios. Solo se bloquea si el día y la hora se solapan.
+                  </p>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Profesor *
@@ -144,6 +156,21 @@ export function TeacherAssignmentFormModal({
                       ))}
                     </select>
                   </div>
+
+                  {teacherAssignments.length > 0 && (
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-600 p-3 text-sm">
+                      <p className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Grupos ya asignados a este profesor
+                      </p>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        {teacherAssignments.map((a) => (
+                          <li key={a.id}>
+                            {formatCategoryShiftLabel(a.categoryShift as CategoryShift)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

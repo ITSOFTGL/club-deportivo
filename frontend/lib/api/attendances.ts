@@ -59,8 +59,84 @@ export interface BatchAttendanceDto {
   }>;
 }
 
+export interface MonthlyAttendanceReport {
+  year: number;
+  month: number;
+  listDays: Array<{ date: string; shiftName: string; recordsCount: number }>;
+  listDates: string[];
+  students: Array<{
+    studentId: string;
+    name: string;
+    lastName: string;
+    category?: string;
+    branch?: string;
+    profilePhotoUrl?: string | null;
+    byDay: Record<string, string>;
+    absences: string[];
+  }>;
+}
+
+export interface AbsenceSearchResult {
+  from: string;
+  to: string;
+  results: Array<{
+    studentId: string;
+    name: string;
+    lastName: string;
+    category?: string;
+    branch?: string;
+    profilePhotoUrl?: string | null;
+    parentPhone?: string | null;
+    parentName?: string | null;
+    missed: Array<{ date: string; status: string; shiftName: string }>;
+    missedCount: number;
+  }>;
+}
+
 const attendancesApi = {
   getAll: (): Promise<Attendance[]> => api.get('/attendances'),
+  getForParent: (params?: {
+    studentId?: string;
+    from?: string;
+    to?: string;
+  }): Promise<Attendance[]> => {
+    const q = new URLSearchParams();
+    if (params?.studentId) q.set('studentId', params.studentId);
+    if (params?.from) q.set('from', params.from);
+    if (params?.to) q.set('to', params.to);
+    const qs = q.toString();
+    return api.get(`/attendances${qs ? `?${qs}` : ''}`);
+  },
+  getMonthlyReport: (params: {
+    year: number;
+    month: number;
+    categoryId?: string;
+    branchId?: string;
+  }): Promise<MonthlyAttendanceReport> => {
+    const q = new URLSearchParams({
+      year: String(params.year),
+      month: String(params.month),
+    });
+    if (params.categoryId) q.set('categoryId', params.categoryId);
+    if (params.branchId) q.set('branchId', params.branchId);
+    return api.get(`/attendances/report/monthly?${q}`);
+  },
+  searchAbsences: (params: {
+    search?: string;
+    from: string;
+    to: string;
+    categoryId?: string;
+    branchId?: string;
+  }): Promise<AbsenceSearchResult> => {
+    const q = new URLSearchParams({
+      from: params.from,
+      to: params.to,
+    });
+    if (params.search) q.set('search', params.search);
+    if (params.categoryId) q.set('categoryId', params.categoryId);
+    if (params.branchId) q.set('branchId', params.branchId);
+    return api.get(`/attendances/report/absences?${q}`);
+  },
   getByDate: (date: string, teacherId?: string): Promise<Attendance[]> =>
     api.get(
       `/attendances?date=${date}${teacherId ? `&teacherId=${teacherId}` : ''}`,

@@ -24,6 +24,10 @@ import { StudentFormModal } from '@/components/students/StudentFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 
 import { getMembershipBadge } from '@/lib/utils/membership';
+import { StudentAvatar } from '@/components/ui/StudentAvatar';
+import { formatDateFromApi, isBirthdayToday } from '@/lib/utils/date';
+import { useSession } from 'next-auth/react';
+import { canDeleteRecords } from '@/lib/permissions';
 
 interface Parent {
   id: string;
@@ -34,6 +38,8 @@ interface Parent {
 
 export default function StudentsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const allowDelete = canDeleteRecords(session?.user?.role);
   const { students, loading, searchTerm, setSearchTerm, fetchStudents, createStudent, updateStudent, deleteStudent } = useStudentsStore();
   const { branches, fetchBranches } = useBranchesStore();
   const { categories, fetchCategories } = useCategoriesStore();
@@ -72,18 +78,23 @@ export default function StudentsPage() {
 
   const handleSubmit = async (data: any) => {
     setFormLoading(true);
+    let studentId: string | undefined;
     let success: boolean;
     if (editingStudent) {
       success = await updateStudent(editingStudent.id, data);
+      studentId = editingStudent.id;
     } else {
-      success = await createStudent(data);
+      const created = await createStudent(data);
+      success = Boolean(created);
+      studentId = created?.id;
     }
     setFormLoading(false);
     if (success) {
       setIsModalOpen(false);
       setEditingStudent(null);
+      await fetchStudents();
     }
-    return success;
+    return { success, studentId };
   };
 
   const handleDelete = async () => {
@@ -102,10 +113,7 @@ export default function StudentsPage() {
     setIsModalOpen(true);
   };
 
-  const formatDate = (date: string) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('es-ES');
-  };
+  const formatDate = (date: string) => formatDateFromApi(date) || 'N/A';
 
   const getParentName = (student: { parentId?: string; parent?: { name: string; lastName: string }; guardians?: Array<{ name: string; lastName: string; isPrimary?: boolean }> }) => {
     if (student.parent) {
@@ -243,6 +251,7 @@ export default function StudentsPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alumno</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Nac.</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ingreso</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apoderado</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
@@ -266,7 +275,7 @@ export default function StudentsPage() {
                 ))
               ) : filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                     <UserGroupIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     {searchTerm ? 'No se encontraron alumnos' : 'No hay alumnos registrados'}
                   </td>
@@ -283,13 +292,21 @@ export default function StudentsPage() {
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-[#7c0613] to-[#4a030b] rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">
-                              {student.name?.charAt(0)}{student.lastName?.charAt(0)}
-                            </span>
-                          </div>
+                          <StudentAvatar
+                            name={student.name}
+                            lastName={student.lastName}
+                            profilePhotoUrl={student.profilePhotoUrl}
+                            size="md"
+                          />
                           <div>
-                            <p className="font-medium text-gray-900">{student.name} {student.lastName}</p>
+                            <p className="font-medium text-gray-900 flex items-center gap-1 flex-wrap">
+                              {student.name} {student.lastName}
+                              {isBirthdayToday(student.birthDate) && (
+                                <span title="Cumpleaños hoy" className="text-amber-600">
+                                  🎂🕯️
+                                </span>
+                              )}
+                            </p>
                             {student.documentId && (
                               <p className="text-xs text-gray-500 mt-0.5">Doc: {student.documentId}</p>
                             )}
@@ -300,6 +317,13 @@ export default function StudentsPage() {
                         <p className="text-sm text-gray-600 flex items-center">
                           <CalendarIcon className="w-4 h-4 mr-1 text-gray-400" />
                           {formatDate(student.birthDate)}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm text-gray-600">
+                          {student.enrollmentDate
+                            ? formatDate(student.enrollmentDate)
+                            : '—'}
                         </p>
                       </td>
                       <td className="px-6 py-4">
@@ -367,6 +391,7 @@ export default function StudentsPage() {
                         >
                           <PencilIcon className="w-4 h-4" />
                         </button>
+                        {allowDelete && (
                         <button
                           onClick={() => {
                             setDeletingStudent(student);
@@ -377,6 +402,7 @@ export default function StudentsPage() {
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
+                        )}
                        </td>
                     </motion.tr>
                   ))}
