@@ -25,6 +25,8 @@ import {
   parseLocalDateInput,
   toLocalDateKey,
 } from '../common/utils/membership.util';
+import { getStudentMonthlyFee } from '../common/utils/student-fee.util';
+import { isValidImageUpload } from '../common/utils/upload-image.util';
 
 
 
@@ -90,18 +92,15 @@ export class PaymentsService {
 
 
 
-  savePaymentQrFile(file: { buffer: Buffer; mimetype?: string }) {
-
-    if (!file?.buffer?.length) {
-
-      throw new BadRequestException('Archivo de imagen inválido');
-
-    }
-
-    if (!file.mimetype?.startsWith('image/')) {
-
-      throw new BadRequestException('Solo se permiten imágenes (PNG, JPG, etc.)');
-
+  savePaymentQrFile(file: {
+    buffer: Buffer;
+    mimetype?: string;
+    originalname?: string;
+  }) {
+    if (!isValidImageUpload(file)) {
+      throw new BadRequestException(
+        'Archivo de imagen inválido. Use PNG o JPG (máx. 5 MB).',
+      );
     }
 
     fs.mkdirSync(this.uploadsDir, { recursive: true });
@@ -384,11 +383,15 @@ export class PaymentsService {
 
     const currentPaidUntil = await this.getStudentPaidUntil(dto.studentId);
 
+    const enrollmentAnchor = parseLocalDateInput(
+      student.enrollmentDate ?? student.createdAt,
+    );
+
     const extendFrom = dto.extendFromDate
 
       ? parseLocalDateInput(dto.extendFromDate)
 
-      : currentPaidUntil ?? paidAt;
+      : currentPaidUntil ?? enrollmentAnchor;
 
 
 
@@ -396,7 +399,7 @@ export class PaymentsService {
       ? dto.extendFromDate.split('T')[0]
       : currentPaidUntil
         ? toLocalDateKey(parseLocalDateInput(currentPaidUntil))
-        : toLocalDateKey(paidAt);
+        : toLocalDateKey(enrollmentAnchor);
 
 
 
@@ -404,19 +407,17 @@ export class PaymentsService {
 
 
 
-    const discountPercent = student.discountPercent ?? 0;
+    const monthlyFee = getStudentMonthlyFee(student);
 
-    const suggestedAmount = this.computeAmount(
-
-      student.category.monthlyPrice,
-
-      months,
-
-      discountPercent,
-
-    );
+    const suggestedAmount = this.computeAmount(monthlyFee, months, 0);
 
     const finalAmount = dto.amount ?? suggestedAmount;
+
+    const categoryBase = (student.category?.monthlyPrice ?? 0) * months;
+    const discountRecorded = Math.max(
+      0,
+      Math.round((categoryBase - finalAmount) * 100) / 100,
+    );
 
 
 
@@ -444,9 +445,7 @@ export class PaymentsService {
 
         amount: finalAmount,
 
-        discount:
-
-          (student.category.monthlyPrice * months * discountPercent) / 100,
+        discount: discountRecorded,
 
         total: finalAmount,
 
@@ -542,7 +541,19 @@ export class PaymentsService {
 
       const currentPaidUntil = await this.getStudentPaidUntil(studentId);
 
-      extendFrom = currentPaidUntil ?? paidAt;
+      const st = await this.prisma.student.findUnique({
+
+        where: { id: studentId },
+
+      });
+
+      const enrollmentAnchor = st
+
+        ? parseLocalDateInput(st.enrollmentDate ?? st.createdAt)
+
+        : paidAt;
+
+      extendFrom = currentPaidUntil ?? enrollmentAnchor;
 
     } else {
 

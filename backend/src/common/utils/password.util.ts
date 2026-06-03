@@ -1,5 +1,5 @@
 export const PASSWORD_REQUIREMENTS_MESSAGE =
-  'La contraseña debe tener al menos 8 caracteres, 1 mayúscula, 2 números y 1 carácter especial';
+  'La contraseña debe tener al menos 6 caracteres, incluir una letra y un número';
 
 const SPECIAL_CHARS = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
 
@@ -8,25 +8,26 @@ export interface PasswordValidationResult {
   message: string;
   checks: {
     minLength: boolean;
-    uppercase: boolean;
-    twoNumbers: boolean;
-    special: boolean;
+    hasLetter: boolean;
+    hasNumber: boolean;
+    /** Recomendado, no obligatorio */
+    strongExtra: boolean;
   };
 }
 
 export function validatePassword(password: string): PasswordValidationResult {
   const checks = {
-    minLength: (password?.length ?? 0) >= 8,
-    uppercase: /[A-Z]/.test(password ?? ''),
-    twoNumbers: ((password ?? '').match(/\d/g) ?? []).length >= 2,
-    special: SPECIAL_CHARS.test(password ?? ''),
+    minLength: (password?.length ?? 0) >= 6,
+    hasLetter: /[a-zA-Z]/.test(password ?? ''),
+    hasNumber: /\d/.test(password ?? ''),
+    strongExtra:
+      (password?.length ?? 0) >= 8 &&
+      /[A-Z]/.test(password ?? '') &&
+      ((password ?? '').match(/\d/g) ?? []).length >= 1 &&
+      SPECIAL_CHARS.test(password ?? ''),
   };
 
-  const valid =
-    checks.minLength &&
-    checks.uppercase &&
-    checks.twoNumbers &&
-    checks.special;
+  const valid = checks.minLength && checks.hasLetter && checks.hasNumber;
 
   return {
     valid,

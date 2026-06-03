@@ -45,7 +45,7 @@ export class EnrollmentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancelar una inscripción' })
   remove(@Param('id') id: string) {
     return this.enrollmentsService.remove(id);

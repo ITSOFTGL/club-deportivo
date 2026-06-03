@@ -103,7 +103,7 @@ export class UsersController {
     return this.users.resetPassword(id, dto, actor);
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar (soft delete) un usuario' })
   softDelete(@Param('id') id: string, @CurrentUser() actor: AuthUser) {

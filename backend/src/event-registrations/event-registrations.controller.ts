@@ -75,7 +75,7 @@ export class EventRegistrationsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancelar inscripción' })
   remove(@Param('id') id: string) {
     return this.eventRegistrationsService.remove(id);

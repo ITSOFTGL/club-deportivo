@@ -51,7 +51,7 @@ export class GuardiansController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar un apoderado' })
   remove(@Param('id') id: string) {
     return this.guardiansService.remove(id);

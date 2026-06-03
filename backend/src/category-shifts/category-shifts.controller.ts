@@ -55,7 +55,7 @@ export class CategoryShiftsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar un turno de categoría' })
   remove(@Param('id') id: string) {
     return this.categoryShiftsService.remove(id);

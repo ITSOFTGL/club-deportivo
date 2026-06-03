@@ -48,7 +48,7 @@ export class ShiftsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar un turno' })
   async remove(@Param('id') id: string) {
     return this.shiftsService.remove(id);

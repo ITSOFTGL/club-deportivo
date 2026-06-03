@@ -430,6 +430,11 @@ model Student {
   acfDate      DateTime?
   status           String   @default("ACTIVE")
   discountPercent  Float    @default(0)
+  /** Mensualidad fija para este alumno (ej. 200 en vez de 250 de la categoría). */
+  monthlyFeeOverride Float?
+  profilePhotoUrl  String?
+  /** Fecha de ingreso/inscripción; ancla del ciclo de mensualidad (no la fecha de pago). */
+  enrollmentDate   DateTime @default(now())
   parentId         String?
   branchId         String
   categoryId       String

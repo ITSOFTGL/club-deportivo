@@ -48,7 +48,7 @@ export class EventsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar evento' })
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);

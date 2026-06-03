@@ -56,7 +56,7 @@ export class OrdersController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancelar orden' })
   remove(@Param('id') id: string) {
     return this.ordersService.remove(id);

@@ -1,4 +1,3 @@
-// backend/src/students/students.controller.ts
 import {
   Controller,
   Get,
@@ -9,7 +8,11 @@ import {
   Delete,
   UseGuards,
   Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -27,11 +30,35 @@ export class StudentsController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @Post()
-  create(@Body() createStudentDto: CreateStudentDto, @CurrentUser() actor: AuthUser) {
+  create(@Body() createStudentDto: CreateStudentDto) {
     return this.studentsService.create(createStudentDto);
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.COLLECTOR, UserRole.PARENT)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.TEACHER,
+    UserRole.COLLECTOR,
+    UserRole.PARENT,
+  )
+  @Get('birthdays/today')
+  findBirthdaysToday() {
+    return this.studentsService.findBirthdaysToday();
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
+  @Get('membership-alerts')
+  findMembershipAlerts() {
+    return this.studentsService.findMembershipAlerts();
+  }
+
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.TEACHER,
+    UserRole.COLLECTOR,
+    UserRole.PARENT,
+  )
   @Get()
   findAll(
     @CurrentUser() actor: AuthUser,
@@ -52,27 +79,42 @@ export class StudentsController {
     return this.studentsService.findAll();
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COLLECTOR)
-  @Get('membership-alerts')
-  findMembershipAlerts() {
-    return this.studentsService.findMembershipAlerts();
-  }
-
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER, UserRole.COLLECTOR, UserRole.PARENT)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.TEACHER,
+    UserRole.COLLECTOR,
+    UserRole.PARENT,
+  )
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() actor: AuthUser) {
-    return this.studentsService.findOne(id);
+    return this.studentsService.findOne(id, actor);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto, @CurrentUser() actor: AuthUser) {
+  update(@Param('id') id: string, @Body() updateStudentDto: UpdateStudentDto) {
     return this.studentsService.update(id, updateStudentDto);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
+  @Post(':id/photo')
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      storage: memoryStorage(),
+      limits: { fileSize: 3 * 1024 * 1024 },
+    }),
+  )
+  uploadPhoto(
+    @Param('id') id: string,
+    @UploadedFile() file: { buffer: Buffer; mimetype?: string },
+  ) {
+    return this.studentsService.uploadProfilePhoto(id, file);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser() actor: AuthUser) {
+  remove(@Param('id') id: string) {
     return this.studentsService.remove(id);
   }
 }

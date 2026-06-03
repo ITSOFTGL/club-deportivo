@@ -43,7 +43,7 @@ export class BranchesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar (soft delete) una sucursal' })
   remove(@Param('id') id: string) {
     return this.branchesService.remove(id);

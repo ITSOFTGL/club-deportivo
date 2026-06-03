@@ -56,7 +56,7 @@ export class StudentDocumentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.PARENT)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.PARENT)
   @ApiOperation({ summary: 'Eliminar documento' })
   remove(@Param('id') id: string) {
     return this.studentDocumentsService.remove(id);

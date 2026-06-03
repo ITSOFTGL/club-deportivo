@@ -58,7 +58,7 @@ export class TeacherAssignmentsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar asignación' })
   remove(@Param('id') id: string) {
     return this.teacherAssignmentsService.remove(id);

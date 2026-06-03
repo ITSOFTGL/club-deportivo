@@ -55,7 +55,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar producto' })
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);

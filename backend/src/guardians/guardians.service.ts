@@ -19,21 +19,10 @@ export class GuardiansService {
     return this.prismaService.prisma;
   }
 
-  async create(createDto: CreateGuardianDto) {
-    const studentIds = [
-      createDto.studentId,
-      ...(createDto.additionalStudentIds ?? []),
-    ].filter((id, i, arr) => id && arr.indexOf(id) === i);
-
-    for (const sid of studentIds) {
-      const student = await this.prisma.student.findUnique({
-        where: { id: sid },
-      });
-      if (!student) throw new NotFoundException(`Alumno ${sid} no encontrado`);
-    }
-
-    let parentUserId: string | undefined;
-
+  /** Cuenta de acceso nueva o usuario PARENT existente (correo/documento). */
+  private async resolveParentUserId(
+    createDto: CreateGuardianDto,
+  ): Promise<string | undefined> {
     if (createDto.createUserAccount) {
       if (!createDto.email?.trim()) {
         throw new BadRequestException(
@@ -50,22 +39,30 @@ export class GuardiansService {
         throw new BadRequestException(pwdCheck.message);
       }
 
-      const exists = await this.prisma.user.findUnique({
-        where: { email: createDto.email.trim() },
-      });
-      if (exists) throw new ConflictException('El correo ya está registrado');
+      const email = createDto.email.trim().toLowerCase();
+      const exists = await this.prisma.user.findUnique({ where: { email } });
+      if (exists) {
+        if (exists.role !== UserRole.PARENT) {
+          throw new ConflictException(
+            'El correo ya está registrado con otro rol. Use otro correo o vincule desde Usuarios.',
+          );
+        }
+        return exists.id;
+      }
 
       const docExists = await this.prisma.user.findUnique({
         where: { documentId: createDto.documentId },
       });
       if (docExists) {
-        throw new ConflictException('El documento ya está registrado como usuario');
+        throw new ConflictException(
+          'El documento ya está registrado como usuario',
+        );
       }
 
       const hashed = await bcrypt.hash(createDto.password, 10);
       const user = await this.prisma.user.create({
         data: {
-          email: createDto.email.trim(),
+          email,
           password: hashed,
           name: createDto.name,
           lastName: createDto.lastName,
@@ -76,8 +73,46 @@ export class GuardiansService {
           approvalStatus: 'APPROVED',
         },
       });
-      parentUserId = user.id;
+      return user.id;
     }
+
+    if (createDto.email?.trim()) {
+      const byEmail = await this.prisma.user.findFirst({
+        where: {
+          email: createDto.email.trim().toLowerCase(),
+          role: UserRole.PARENT,
+          status: UserStatus.ACTIVE,
+        },
+      });
+      if (byEmail) return byEmail.id;
+    }
+
+    const byDoc = await this.prisma.user.findFirst({
+      where: {
+        documentId: createDto.documentId,
+        role: UserRole.PARENT,
+        status: UserStatus.ACTIVE,
+      },
+    });
+    if (byDoc) return byDoc.id;
+
+    return undefined;
+  }
+
+  async create(createDto: CreateGuardianDto) {
+    const studentIds = [
+      createDto.studentId,
+      ...(createDto.additionalStudentIds ?? []),
+    ].filter((id, i, arr) => id && arr.indexOf(id) === i);
+
+    for (const sid of studentIds) {
+      const student = await this.prisma.student.findUnique({
+        where: { id: sid },
+      });
+      if (!student) throw new NotFoundException(`Alumno ${sid} no encontrado`);
+    }
+
+    const parentUserId = await this.resolveParentUserId(createDto);
 
     type CreatedGuardian = Prisma.GuardianGetPayload<{
       include: { student: true };
@@ -95,7 +130,7 @@ export class GuardiansService {
               ? createDto.documentId
               : `${createDto.documentId}-${i + 1}`,
           phone: createDto.phone,
-          email: createDto.email,
+          email: createDto.email?.trim() || null,
           relationship: createDto.relationship,
           isPrimary: createDto.isPrimary ?? false,
         },
@@ -115,6 +150,7 @@ export class GuardiansService {
       ...created[0],
       linkedStudents: studentIds.length,
       userAccountCreated: Boolean(parentUserId),
+      loginLinked: Boolean(parentUserId),
     };
   }
 

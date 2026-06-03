@@ -49,7 +49,7 @@ export class TeacherProfilesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar perfil' })
   remove(@Param('id') id: string) {
     return this.teacherProfilesService.remove(id);

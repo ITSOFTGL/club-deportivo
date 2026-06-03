@@ -68,6 +68,10 @@ export class CreateStudentDto {
   @IsString()
   parentId?: string;
 
+  @IsOptional()
+  @IsDateString()
+  enrollmentDate?: string;
+
   @IsString()
   branchId!: string;
 
@@ -77,4 +81,12 @@ export class CreateStudentDto {
   @IsOptional()
   @IsNumber()
   discountPercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  monthlyFeeOverride?: number;
+
+  @IsOptional()
+  @IsString()
+  profilePhotoUrl?: string;
 }

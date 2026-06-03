@@ -56,7 +56,7 @@ export class PaymentPlansController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancelar plan' })
   remove(@Param('id') id: string) {
     return this.paymentPlansService.remove(id);

@@ -1,10 +1,26 @@
 // backend/src/students/students.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PaymentStatus } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PaymentStatus, Prisma, UserRole } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { getMembershipStatus } from '../common/utils/membership.util';
+import {
+  getMembershipStatus,
+  parseLocalDateInput,
+} from '../common/utils/membership.util';
+import { getStudentMonthlyFee } from '../common/utils/student-fee.util';
+import {
+  imageExtensionFromUpload,
+  isValidImageUpload,
+} from '../common/utils/upload-image.util';
 
 @Injectable()
 export class StudentsService {
@@ -38,13 +54,28 @@ export class StudentsService {
     return students.map((student) => {
       const paidUntil = paidUntilMap.get(student.id);
       const membership = getMembershipStatus(paidUntil);
+      const withCategory = student as typeof student & {
+        category?: { monthlyPrice?: number | null };
+        discountPercent?: number | null;
+        monthlyFeeOverride?: number | null;
+      };
+      const photoPath = (student as { profilePhotoUrl?: string | null; updatedAt?: Date })
+        .profilePhotoUrl;
+      const updatedAt = (student as { updatedAt?: Date }).updatedAt;
+      const profilePhotoUrlWithCache = photoPath
+        ? `${photoPath.split('?')[0]}?v=${updatedAt ? new Date(updatedAt).getTime() : Date.now()}`
+        : null;
+
       return {
         ...student,
+        profilePhotoUrl: profilePhotoUrlWithCache,
         membershipPaidUntil: paidUntil?.toISOString() ?? null,
         membershipActive: membership.membershipActive,
         membershipStatus: membership.status,
         membershipLabel: membership.label,
         membershipDaysRemaining: membership.daysRemaining,
+        categoryMonthlyPrice: withCategory.category?.monthlyPrice ?? 0,
+        effectiveMonthlyFee: getStudentMonthlyFee(withCategory),
       };
     });
   }
@@ -54,7 +85,7 @@ export class StudentsService {
       data: {
         name: createDto.name,
         lastName: createDto.lastName,
-        birthDate: new Date(createDto.birthDate),
+        birthDate: parseLocalDateInput(createDto.birthDate),
         documentId: createDto.documentId,
         gender: createDto.gender,
         weight: createDto.weight,
@@ -69,9 +100,14 @@ export class StudentsService {
         school: createDto.school,
         grade: createDto.grade,
         parentId: createDto.parentId || undefined,
+        enrollmentDate: createDto.enrollmentDate
+          ? parseLocalDateInput(createDto.enrollmentDate)
+          : parseLocalDateInput(new Date()),
         branchId: createDto.branchId,
         categoryId: createDto.categoryId,
         discountPercent: createDto.discountPercent ?? 0,
+        monthlyFeeOverride: createDto.monthlyFeeOverride,
+        profilePhotoUrl: createDto.profilePhotoUrl,
         status: 'ACTIVE',
       },
       include: { parent: true, branch: true, category: true, guardians: true },
@@ -87,11 +123,55 @@ export class StudentsService {
   }
 
   async findByParent(parentId: string) {
-    const rows = await this.prismaService.prisma.student.findMany({
-      where: { parentId, status: 'ACTIVE' },
-      include: { branch: true, category: true, parent: true },
+    const parent = await this.prismaService.prisma.user.findUnique({
+      where: { id: parentId },
     });
+    if (!parent) return [];
+
+    const orFilters: Prisma.StudentWhereInput[] = [{ parentId }];
+    const email = parent.email?.trim();
+    if (email) {
+      orFilters.push({
+        guardians: {
+          some: { isActive: true, email: { equals: email, mode: 'insensitive' } },
+        },
+      });
+    }
+    if (parent.documentId) {
+      orFilters.push({
+        guardians: {
+          some: { isActive: true, documentId: parent.documentId },
+        },
+      });
+    }
+
+    const rows = await this.prismaService.prisma.student.findMany({
+      where: { status: 'ACTIVE', OR: orFilters },
+      include: { branch: true, category: true, parent: true, guardians: true },
+    });
+
+    const toLink = rows.filter((s) => !s.parentId);
+    if (toLink.length > 0) {
+      await this.prismaService.prisma.student.updateMany({
+        where: { id: { in: toLink.map((s) => s.id) } },
+        data: { parentId },
+      });
+      for (const s of toLink) {
+        s.parentId = parentId;
+      }
+    }
+
     return this.withMembership(rows);
+  }
+
+  private async assertParentCanAccessStudent(
+    studentId: string,
+    parentId: string,
+  ) {
+    const children = await this.findByParent(parentId);
+    if (!children.some((c) => c.id === studentId)) {
+      throw new ForbiddenException('No tiene acceso a este alumno');
+    }
   }
 
   async findByTeacher(teacherId: string, categoryShiftId?: string) {
@@ -167,12 +247,15 @@ export class StudentsService {
       });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actor?: AuthUser) {
     const student = await this.prismaService.prisma.student.findUnique({
       where: { id },
       include: { parent: true, branch: true, category: true, guardians: true },
     });
     if (!student) throw new NotFoundException('Alumno no encontrado');
+    if (actor?.role === UserRole.PARENT) {
+      await this.assertParentCanAccessStudent(id, actor.id);
+    }
     const [enriched] = await this.withMembership([student]);
     return enriched;
   }
@@ -185,7 +268,7 @@ export class StudentsService {
     if (updateDto.name !== undefined) data.name = updateDto.name;
     if (updateDto.lastName !== undefined) data.lastName = updateDto.lastName;
     if (updateDto.birthDate !== undefined) {
-      data.birthDate = new Date(updateDto.birthDate);
+      data.birthDate = parseLocalDateInput(updateDto.birthDate);
     }
     if (updateDto.documentId !== undefined) data.documentId = updateDto.documentId;
     if (updateDto.gender !== undefined) data.gender = updateDto.gender;
@@ -213,6 +296,15 @@ export class StudentsService {
     if (updateDto.discountPercent !== undefined) {
       data.discountPercent = updateDto.discountPercent;
     }
+    if (updateDto.enrollmentDate !== undefined) {
+      data.enrollmentDate = parseLocalDateInput(updateDto.enrollmentDate);
+    }
+    if (updateDto.monthlyFeeOverride !== undefined) {
+      data.monthlyFeeOverride = updateDto.monthlyFeeOverride;
+    }
+    if (updateDto.profilePhotoUrl !== undefined) {
+      data.profilePhotoUrl = updateDto.profilePhotoUrl;
+    }
 
     return this.prismaService.prisma.student.update({
       where: { id },
@@ -227,5 +319,90 @@ export class StudentsService {
       where: { id },
       data: { status: 'INACTIVE' },
     });
+  }
+
+  async findBirthdaysToday() {
+    const now = new Date();
+    const month = now.getMonth();
+    const day = now.getDate();
+
+    const students = await this.prismaService.prisma.student.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        category: true,
+        branch: true,
+        parent: { select: { id: true, name: true, lastName: true, phone: true } },
+        guardians: {
+          where: { isActive: true },
+          orderBy: { isPrimary: 'desc' },
+          take: 2,
+        },
+      },
+      orderBy: [{ lastName: 'asc' }, { name: 'asc' }],
+    });
+
+    return students
+      .filter((s) => {
+        const b = new Date(s.birthDate);
+        return b.getMonth() === month && b.getDate() === day;
+      })
+      .map((s) => {
+        const birth = new Date(s.birthDate);
+        let age = now.getFullYear() - birth.getFullYear();
+        if (
+          now.getMonth() < birth.getMonth() ||
+          (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())
+        ) {
+          age -= 1;
+        }
+        const g = s.guardians.find((x) => x.isPrimary) ?? s.guardians[0];
+        return {
+          id: s.id,
+          name: s.name,
+          lastName: s.lastName,
+          birthDate: s.birthDate,
+          age,
+          profilePhotoUrl: s.profilePhotoUrl,
+          category: s.category?.name,
+          branch: s.branch?.name,
+          parentPhone: g?.phone ?? s.parent?.phone ?? null,
+          parentName: g
+            ? `${g.name} ${g.lastName}`
+            : s.parent
+              ? `${s.parent.name} ${s.parent.lastName}`
+              : null,
+        };
+      });
+  }
+
+  async uploadProfilePhoto(
+    id: string,
+    file?: { buffer: Buffer; mimetype?: string; originalname?: string },
+  ) {
+    if (!isValidImageUpload(file)) {
+      throw new BadRequestException(
+        'Imagen inválida. Use JPG o PNG (máx. 3 MB).',
+      );
+    }
+    const upload = file!;
+    await this.findOne(id);
+
+    const ext = imageExtensionFromUpload(upload);
+    const dir = path.join(process.cwd(), 'uploads', 'students');
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `${id}.${ext}`;
+    fs.writeFileSync(path.join(dir, filename), upload.buffer);
+    const storedPath = `/uploads/students/${filename}`;
+
+    const row = await this.prismaService.prisma.student.update({
+      where: { id },
+      data: { profilePhotoUrl: storedPath },
+      include: { parent: true, branch: true, category: true, guardians: true },
+    });
+
+    return {
+      ...row,
+      profilePhotoUrl: `${storedPath}?v=${Date.now()}`,
+    };
   }
 }

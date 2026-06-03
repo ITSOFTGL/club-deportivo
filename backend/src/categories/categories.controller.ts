@@ -42,7 +42,7 @@ export class CategoriesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar (soft delete) una categoría' })
   remove(@Param('id') id: string) {
     return this.categoriesService.remove(id);

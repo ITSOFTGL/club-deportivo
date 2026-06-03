@@ -63,7 +63,7 @@ export class NotificationsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Eliminar notificación' })
   remove(@Param('id') id: string) {
     return this.notificationsService.remove(id);
