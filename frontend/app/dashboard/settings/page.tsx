@@ -113,7 +113,7 @@ export default function SettingsPage() {
           <label className="block text-sm font-medium mb-2">Elegir imagen (PNG o JPG)</label>
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/*,.heic,.heif"
             onChange={handleFileSelect}
             disabled={uploading}
             className="block w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-[#7c0613] file:text-white"

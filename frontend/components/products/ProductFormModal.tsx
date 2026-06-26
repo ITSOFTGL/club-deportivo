@@ -18,6 +18,10 @@ interface Branch {
 
 const productTypes = [
   { value: 'UNIFORM', label: 'Uniforme' },
+  { value: 'SOCKS', label: 'Medias' },
+  { value: 'SHINGUARD', label: 'Canilleras' },
+  { value: 'BALL', label: 'Balón' },
+  { value: 'BAG', label: 'Mochila' },
   { value: 'ACCESSORY', label: 'Accesorio' },
   { value: 'EQUIPMENT', label: 'Equipo' },
   { value: 'OTHER', label: 'Otro' },

@@ -1,4 +1,4 @@
-const CLUB_LOGO_PATH = '/images/club/logocañito.png';
+const CLUB_LOGO_PATH = '/images/club/logo.png';
 const CLUB_NAME = 'Club Deportivo';
 
 export function exportRowsToPdf(

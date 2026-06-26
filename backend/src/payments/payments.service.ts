@@ -26,7 +26,7 @@ import {
   toLocalDateKey,
 } from '../common/utils/membership.util';
 import { getStudentMonthlyFee } from '../common/utils/student-fee.util';
-import { isValidImageUpload } from '../common/utils/upload-image.util';
+import { isValidImageUpload, persistUpload } from '../common/utils/upload-image.util';
 
 
 
@@ -92,25 +92,25 @@ export class PaymentsService {
 
 
 
-  savePaymentQrFile(file: {
-    buffer: Buffer;
+  savePaymentQrFile(file?: {
+    buffer?: Buffer;
+    path?: string;
     mimetype?: string;
     originalname?: string;
   }) {
+    if (!file) {
+      throw new BadRequestException('No se recibió ninguna imagen.');
+    }
     if (!isValidImageUpload(file)) {
       throw new BadRequestException(
-        'Archivo de imagen inválido. Use PNG o JPG (máx. 5 MB).',
+        'No se pudo procesar la imagen. Use JPG, PNG o WEBP (máx. 25 MB).',
       );
     }
 
     fs.mkdirSync(this.uploadsDir, { recursive: true });
-
-    const dest = path.join(this.uploadsDir, 'payment-qr.png');
-
-    fs.writeFileSync(dest, file.buffer);
+    persistUpload(file, this.uploadsDir, 'payment-qr.png');
 
     return this.getClubPaymentConfig();
-
   }
 
 

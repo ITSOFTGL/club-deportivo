@@ -1,4 +1,14 @@
-import { IsString, IsOptional, IsNumber, IsArray, Min, IsEmail, IsUrl } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsArray,
+  Min,
+  IsEmail,
+  IsIn,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateOrderItemDto {
   @IsString()
@@ -40,6 +50,8 @@ export class CreateOrderDto {
   buyerPhone!: string;
 
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
   items!: CreateOrderItemDto[];
 
   @IsOptional()
@@ -58,4 +70,21 @@ export class CreateOrderDto {
   @IsNumber()
   @Min(0)
   discount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  shippingCost?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsIn(['PAY', 'RESERVE'])
+  mode?: 'PAY' | 'RESERVE';
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

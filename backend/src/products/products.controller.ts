@@ -1,12 +1,29 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { permissiveImageMulterOptions } from '../common/config/multer-upload.config';
+import type { MulterUploadedFile } from '../common/utils/upload-image.util';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('products')
 @ApiBearerAuth()
@@ -23,9 +40,12 @@ export class ProductsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todos los productos' })
-  findAll() {
-    return this.productsService.findAll();
+  @ApiOperation({ summary: 'Catálogo de productos activos' })
+  findAll(@Query('all') all?: string, @CurrentUser() user?: AuthUser) {
+    const includeInactive =
+      all === '1' &&
+      (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.ADMIN);
+    return this.productsService.findAll(includeInactive);
   }
 
   @Get('type/:productType')
@@ -40,11 +60,28 @@ export class ProductsController {
     return this.productsService.findOne(id);
   }
 
+  @Post(':id/image')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @UseInterceptors(FileInterceptor('image', permissiveImageMulterOptions('products')))
+  @ApiOperation({ summary: 'Subir imagen de producto' })
+  uploadImage(
+    @Param('id') id: string,
+    @UploadedFile() file?: MulterUploadedFile,
+  ) {
+    return this.productsService.uploadImage(id, file);
+  }
+
   @Patch(':id/stock')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Actualizar stock' })
-  updateStock(@Param('id') id: string, @Body('quantity') quantity: number, @Body('type') type: 'IN' | 'OUT') {
-    return this.productsService.updateStock(id, quantity, type);
+  updateStock(
+    @Param('id') id: string,
+    @Body('quantity') quantity: number,
+    @Body('type') type: 'IN' | 'OUT',
+    @CurrentUser() user: AuthUser,
+    @Body('note') note?: string,
+  ) {
+    return this.productsService.updateStock(id, quantity, type, user.id, note);
   }
 
   @Patch(':id')

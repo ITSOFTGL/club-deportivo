@@ -98,7 +98,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" suppressHydrationWarning>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Correo electrónico

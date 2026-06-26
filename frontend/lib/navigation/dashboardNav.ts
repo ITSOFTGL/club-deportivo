@@ -37,6 +37,7 @@ export const dashboardNavByRole: Record<string, NavItem[]> = {
     { name: 'Asistencias', href: '/dashboard/attendances', icon: DocumentTextIcon },
     { name: 'Eventos', href: '/dashboard/events', icon: CalendarIcon },
     { name: 'Tienda', href: '/dashboard/products', icon: ShoppingBagIcon },
+    { name: 'Órdenes', href: '/dashboard/orders', icon: ShoppingBagIcon },
     { name: 'Reportes', href: '/dashboard/reports', icon: ChartBarIcon },
     { name: 'Configuración', href: '/dashboard/settings', icon: Cog6ToothIcon },
   ],
@@ -53,6 +54,7 @@ export const dashboardNavByRole: Record<string, NavItem[]> = {
     { name: 'Asistencias', href: '/dashboard/attendances', icon: DocumentTextIcon },
     { name: 'Eventos', href: '/dashboard/events', icon: CalendarIcon },
     { name: 'Tienda', href: '/dashboard/products', icon: ShoppingBagIcon },
+    { name: 'Órdenes', href: '/dashboard/orders', icon: ShoppingBagIcon },
     { name: 'Reportes', href: '/dashboard/reports', icon: ChartBarIcon },
   ],
   TEACHER: [
@@ -61,6 +63,7 @@ export const dashboardNavByRole: Record<string, NavItem[]> = {
     { name: 'Asistencias', href: '/dashboard/attendances', icon: DocumentTextIcon, mobilePrimary: true },
     { name: 'Apoderados', href: '/dashboard/guardians', icon: ShieldCheckIcon },
     { name: 'Eventos', href: '/dashboard/events', icon: CalendarIcon },
+    { name: 'Tienda', href: '/dashboard/products', icon: ShoppingBagIcon },
     { name: 'Horarios', href: '/dashboard/schedule', icon: ClockIcon },
   ],
   COLLECTOR: [
@@ -75,6 +78,7 @@ export const dashboardNavByRole: Record<string, NavItem[]> = {
     { name: 'Pagos', href: '/dashboard/payments', icon: CreditCardIcon, mobilePrimary: true },
     { name: 'Eventos', href: '/dashboard/events', icon: CalendarIcon },
     { name: 'Tienda', href: '/dashboard/products', icon: ShoppingBagIcon },
+    { name: 'Mis pedidos', href: '/dashboard/orders', icon: ShoppingBagIcon },
     { name: 'Asistencias', href: '/dashboard/attendances', icon: DocumentTextIcon },
   ],
 };

@@ -111,6 +111,7 @@ interface StudentFormModalProps {
   categories: Category[];
   parents: Parent[];
   onSubmit: (data: CreateStudentDto) => Promise<{ success: boolean; studentId?: string }>;
+  onPhotoSaved?: (studentId: string, profilePhotoUrl: string) => void;
   loading?: boolean;
 }
 
@@ -122,6 +123,7 @@ export function StudentFormModal({
   categories,
   parents,
   onSubmit,
+  onPhotoSaved,
   loading = false,
 }: StudentFormModalProps) {
   const isQuickRegister = !student;
@@ -266,7 +268,10 @@ export function StudentFormModal({
     const targetId = result.studentId ?? student?.id;
     if (result.success && photoFile && targetId) {
       try {
-        await studentsApi.uploadPhoto(targetId, photoFile);
+        const updated = await studentsApi.uploadPhoto(targetId, photoFile);
+        if (updated.profilePhotoUrl) {
+          onPhotoSaved?.(targetId, updated.profilePhotoUrl);
+        }
         toast.success('Foto de perfil guardada');
       } catch (err) {
         toast.error(
@@ -275,6 +280,7 @@ export function StudentFormModal({
       }
     }
     if (result.success) {
+      setPhotoFile(null);
       onClose();
     }
   };

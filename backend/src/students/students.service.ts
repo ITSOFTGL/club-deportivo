@@ -20,6 +20,8 @@ import { getStudentMonthlyFee } from '../common/utils/student-fee.util';
 import {
   imageExtensionFromUpload,
   isValidImageUpload,
+  persistUpload,
+  type UploadedImageFile,
 } from '../common/utils/upload-image.util';
 
 @Injectable()
@@ -375,23 +377,21 @@ export class StudentsService {
       });
   }
 
-  async uploadProfilePhoto(
-    id: string,
-    file?: { buffer: Buffer; mimetype?: string; originalname?: string },
-  ) {
+  async uploadProfilePhoto(id: string, file?: UploadedImageFile) {
+    if (!file) {
+      throw new BadRequestException('No se recibió ninguna imagen. Intente de nuevo.');
+    }
     if (!isValidImageUpload(file)) {
       throw new BadRequestException(
-        'Imagen inválida. Use JPG o PNG (máx. 3 MB).',
+        'No se pudo procesar la imagen. Use JPG, PNG, WEBP o HEIC (máx. 25 MB).',
       );
     }
-    const upload = file!;
     await this.findOne(id);
 
-    const ext = imageExtensionFromUpload(upload);
+    const ext = imageExtensionFromUpload(file);
     const dir = path.join(process.cwd(), 'uploads', 'students');
-    fs.mkdirSync(dir, { recursive: true });
     const filename = `${id}.${ext}`;
-    fs.writeFileSync(path.join(dir, filename), upload.buffer);
+    persistUpload(file, dir, filename);
     const storedPath = `/uploads/students/${filename}`;
 
     const row = await this.prismaService.prisma.student.update({

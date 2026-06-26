@@ -12,7 +12,8 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { permissiveImageMulterOptions } from '../common/config/multer-upload.config';
+import type { MulterUploadedFile } from '../common/utils/upload-image.util';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
@@ -99,15 +100,11 @@ export class StudentsController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TEACHER)
   @Post(':id/photo')
-  @UseInterceptors(
-    FileInterceptor('photo', {
-      storage: memoryStorage(),
-      limits: { fileSize: 3 * 1024 * 1024 },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('photo', permissiveImageMulterOptions('students')))
   uploadPhoto(
     @Param('id') id: string,
-    @UploadedFile() file: { buffer: Buffer; mimetype?: string },
+    @UploadedFile()
+    file?: MulterUploadedFile,
   ) {
     return this.studentsService.uploadProfilePhoto(id, file);
   }

@@ -22,7 +22,8 @@ import {
 
 import { FileInterceptor } from '@nestjs/platform-express';
 
-import { memoryStorage } from 'multer';
+import { permissiveImageMulterOptions } from '../common/config/multer-upload.config';
+import type { MulterUploadedFile } from '../common/utils/upload-image.util';
 
 import { PaymentsService } from './payments.service';
 
@@ -82,23 +83,13 @@ export class PaymentsController {
 
   @Roles(UserRole.SUPER_ADMIN)
 
-  @UseInterceptors(
-
-    FileInterceptor('qr', {
-
-      storage: memoryStorage(),
-
-      limits: { fileSize: 5 * 1024 * 1024 },
-
-    }),
-
-  )
+  @UseInterceptors(FileInterceptor('qr', permissiveImageMulterOptions('payments')))
 
   @ApiConsumes('multipart/form-data')
 
   @ApiOperation({ summary: 'Subir imagen QR de pago (solo super admin)' })
 
-  uploadQr(@UploadedFile() file: { buffer: Buffer; mimetype?: string }) {
+  uploadQr(@UploadedFile() file?: MulterUploadedFile) {
 
     return this.paymentsService.savePaymentQrFile(file);
 

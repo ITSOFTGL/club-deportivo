@@ -1,20 +1,28 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3001';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(
+  /\/$/,
+  '',
+);
 
-export function resolveMediaUrl(
-  path?: string | null,
-  cacheBust?: string | number,
-): string | null {
-  if (!path?.trim()) return null;
-  const base = API_BASE.replace(/\/api\/?$/, '');
-  let url: string;
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    url = path.split('?')[0];
-  } else {
-    url = `${base}${path.startsWith('/') ? path.split('?')[0] : `/${path.split('?')[0]}`}`;
+/** Convierte rutas /uploads/... en URL absoluta del API. Respeta blob/data y URLs absolutas. */
+export function resolveMediaUrl(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  const p = path.trim();
+  if (
+    p.startsWith('blob:') ||
+    p.startsWith('data:') ||
+    p.startsWith('http://') ||
+    p.startsWith('https://')
+  ) {
+    return p;
   }
-  if (cacheBust != null) {
-    return `${url}?v=${cacheBust}`;
-  }
-  return url;
+  if (p.startsWith('/')) return `${API_BASE}${p}`;
+  return `${API_BASE}/${p}`;
+}
+
+/** Añade cache-bust si la URL es del API y no tiene query. */
+export function withCacheBust(url?: string, version?: string | number): string | undefined {
+  if (!url || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  if (url.includes('?')) return url;
+  const v = version ?? Date.now();
+  return `${url}?v=${v}`;
 }

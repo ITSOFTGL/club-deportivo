@@ -351,7 +351,7 @@ function PaymentsPageContent() {
       )}
 
       {activeTab === 'debtors' && canCollect && (
-        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <div className="card-app table-scroll">
           <table className="w-full min-w-[700px]">
             <thead className="bg-gray-50">
               <tr>
@@ -429,7 +429,7 @@ function PaymentsPageContent() {
         </select>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+      <div className="card-app table-scroll">
         <table className="w-full min-w-[900px]">
           <thead className="bg-gray-50">
             <tr>

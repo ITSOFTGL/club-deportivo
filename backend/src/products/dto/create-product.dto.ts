@@ -61,4 +61,12 @@ export class CreateProductDto {
   @IsOptional()
   @IsArray()
   images?: string[];
+
+  @IsOptional()
+  @IsString()
+  mainImage?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isPopular?: boolean;
 }

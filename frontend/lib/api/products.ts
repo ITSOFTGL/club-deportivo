@@ -58,6 +58,11 @@ const productsApi = {
   create: (data: CreateProductDto): Promise<Product> => api.post('/products', data),
   update: (id: string, data: UpdateProductDto): Promise<Product> => api.patch(`/products/${id}`, data),
   delete: (id: string): Promise<void> => api.delete(`/products/${id}`),
+  uploadImage: (id: string, file: File): Promise<Product> => {
+    const form = new FormData();
+    form.append('image', file);
+    return api.post(`/products/${id}/image`, form);
+  },
 };
 
 export default productsApi;

@@ -77,8 +77,10 @@ enum EnrollmentStatus {
 
 enum OrderStatus {
   PENDING
+  RESERVED
   PAID
   PROCESSING
+  READY
   SHIPPED
   DELIVERED
   CANCELLED
@@ -881,6 +883,7 @@ model Order {
   deliveredAt DateTime?
   cancelledAt DateTime?
   cancellationReason String?
+  reservationExpiresAt DateTime?
   createdBy   String?
   notes       String?
   createdAt   DateTime    @default(now())

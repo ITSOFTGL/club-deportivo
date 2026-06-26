@@ -2,7 +2,10 @@
 'use client';
 
 import Image from 'next/image';
+import { useState } from 'react';
 import { useClubConfig } from '@/hooks/useClubConfig';
+
+const FALLBACK_LOGO = '/images/club/logo.png';
 
 interface ClubLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -18,31 +21,46 @@ const sizes = {
   xl: { container: 'w-24 h-24', image: 96, text: 'text-3xl' },
 };
 
-export default function ClubLogo({ 
-  size = 'md', 
-  className = '', 
+export default function ClubLogo({
+  size = 'md',
+  className = '',
   showText = false,
-  textPosition = 'right'
+  textPosition = 'right',
 }: ClubLogoProps) {
   const { name, logo, primaryColor, secondaryColor } = useClubConfig();
   const sizeStyle = sizes[size];
+  const [src, setSrc] = useState(logo || FALLBACK_LOGO);
+
+  const logoImg = (
+    <div
+      className={`${sizeStyle.container} rounded-2xl flex items-center justify-center shadow-lg overflow-hidden bg-white`}
+    >
+      <Image
+        src={src}
+        alt={name}
+        width={sizeStyle.image}
+        height={sizeStyle.image}
+        className="object-contain p-1"
+        priority
+        unoptimized
+        onError={() => setSrc(FALLBACK_LOGO)}
+      />
+    </div>
+  );
 
   if (textPosition === 'bottom') {
     return (
       <div className={`flex flex-col items-center ${className}`}>
-        <div className={`${sizeStyle.container} rounded-2xl flex items-center justify-center shadow-lg overflow-hidden bg-white`}>
-          <Image
-            src={logo}
-            alt={name}
-            width={sizeStyle.image}
-            height={sizeStyle.image}
-            className="object-contain p-1"
-            priority
-            unoptimized
-          />
-        </div>
+        {logoImg}
         {showText && (
-          <h1 className={`font-bold ${sizeStyle.text} mt-2 text-center bg-gradient-to-r from-[${primaryColor}] to-[${secondaryColor}] bg-clip-text text-transparent`}>
+          <h1
+            className={`font-bold ${sizeStyle.text} mt-2 text-center text-[#7c0613]`}
+            style={{
+              backgroundImage: `linear-gradient(to right, ${primaryColor}, ${secondaryColor})`,
+              WebkitBackgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
             {name}
           </h1>
         )}
@@ -52,21 +70,22 @@ export default function ClubLogo({
 
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
-      <div className={`${sizeStyle.container} rounded-lg flex items-center justify-center shadow-md overflow-hidden bg-white`}>
+      <div
+        className={`${sizeStyle.container} rounded-lg flex items-center justify-center shadow-md overflow-hidden bg-white`}
+      >
         <Image
-          src={logo}
+          src={src}
           alt={name}
           width={sizeStyle.image}
           height={sizeStyle.image}
           className="object-contain p-1"
           priority
           unoptimized
+          onError={() => setSrc(FALLBACK_LOGO)}
         />
       </div>
       {showText && (
-        <span className={`font-bold ${sizeStyle.text} bg-gradient-to-r from-[${primaryColor}] to-[${secondaryColor}] bg-clip-text text-transparent`}>
-          {name}
-        </span>
+        <span className={`font-bold ${sizeStyle.text} text-[#7c0613]`}>{name}</span>
       )}
     </div>
   );

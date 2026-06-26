@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ParentShopView } from '@/components/products/ParentShopView';
+import { ShopCatalog } from '@/components/products/ShopCatalog';
 import { 
   MagnifyingGlassIcon, 
   PlusIcon, 
@@ -21,6 +21,8 @@ import { useBranchesStore } from '@/store/branchesStore';
 import { ProductFormModal } from '@/components/products/ProductFormModal';
 import { DeleteConfirmModal } from '@/components/ui/DeleteConfirmModal';
 import { CreateProductDto } from '@/lib/api/products';
+import { canDeleteRecords } from '@/lib/permissions';
+import Link from 'next/link';
 
 const productTypeLabels: Record<string, string> = {
   UNIFORM: 'Uniforme',
@@ -41,6 +43,9 @@ export default function ProductsPage() {
   const role = session?.user?.role ?? 'PARENT';
   const isParent = role === 'PARENT';
   const canManage = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const allowDelete = canDeleteRecords(role);
+  const canShop = true;
+  const [viewTab, setViewTab] = useState<'shop' | 'admin'>(canManage ? 'shop' : 'shop');
 
   const { products, loading, searchTerm, setSearchTerm, fetchProducts, createProduct, updateProduct, deleteProduct } = useProductsStore();
   const { categories, fetchCategories } = useCategoriesStore();
@@ -105,16 +110,24 @@ export default function ProductsPage() {
     setIsModalOpen(true);
   };
 
-  if (isParent) {
+  if (isParent || (!canManage && canShop)) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tienda</h1>
-          <p className="text-gray-500 mt-1">
-            Agrega productos al carrito y solicita tu reserva o pago
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Tienda</h1>
+            <p className="text-gray-500 mt-1">
+              Uniformes, accesorios y equipamiento del club
+            </p>
+          </div>
+          <Link
+            href="/dashboard/orders"
+            className="text-sm font-medium text-[#7c0613] hover:underline"
+          >
+            Mis pedidos →
+          </Link>
         </div>
-        <ParentShopView products={products} loading={loading} />
+        <ShopCatalog products={products} loading={loading} />
       </motion.div>
     );
   }
@@ -128,18 +141,56 @@ export default function ProductsPage() {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Gestiona uniformes, accesorios y equipamiento</p>
         </div>
         {canManage && (
-          <button
-            onClick={() => {
-              setEditingProduct(null);
-              setIsModalOpen(true);
-            }}
-            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#7c0613] to-[#4a030b] text-white rounded-lg hover:shadow-lg transition-all shadow-md"
-          >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Nuevo Producto
-          </button>
+          <div className="flex gap-2">
+            <Link
+              href="/dashboard/orders"
+              className="inline-flex items-center px-4 py-2 border border-[#7c0613] text-[#7c0613] rounded-lg text-sm font-medium"
+            >
+              Ver órdenes
+            </Link>
+            <button
+              onClick={() => {
+                setEditingProduct(null);
+                setIsModalOpen(true);
+              }}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-[#7c0613] to-[#4a030b] text-white rounded-lg hover:shadow-lg transition-all shadow-md"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Nuevo Producto
+            </button>
+          </div>
         )}
       </div>
+
+      {canManage && (
+        <div className="flex gap-2 border-b">
+          <button
+            type="button"
+            onClick={() => setViewTab('shop')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+              viewTab === 'shop' ? 'border-[#7c0613] text-[#7c0613]' : 'border-transparent text-gray-500'
+            }`}
+          >
+            Catálogo
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewTab('admin')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+              viewTab === 'admin' ? 'border-[#7c0613] text-[#7c0613]' : 'border-transparent text-gray-500'
+            }`}
+          >
+            Gestión de productos
+          </button>
+        </div>
+      )}
+
+      {viewTab === 'shop' && canManage && (
+        <ShopCatalog products={products} loading={loading} />
+      )}
+
+      {viewTab === 'admin' && canManage && (
+      <>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -287,6 +338,7 @@ export default function ProductsPage() {
                             >
                               <PencilIcon className="w-4 h-4" />
                             </button>
+                            {allowDelete && (
                             <button
                               onClick={() => {
                                 setDeletingProduct(product);
@@ -297,6 +349,7 @@ export default function ProductsPage() {
                             >
                               <TrashIcon className="w-4 h-4" />
                             </button>
+                            )}
                           </>
                         )}
                       </td>
@@ -309,7 +362,9 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      </>
+      )}
+
       <ProductFormModal
         isOpen={isModalOpen}
         onClose={() => {

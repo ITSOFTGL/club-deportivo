@@ -89,12 +89,21 @@ export default function StudentsPage() {
       studentId = created?.id;
     }
     setFormLoading(false);
-    if (success) {
-      setIsModalOpen(false);
-      setEditingStudent(null);
-      await fetchStudents();
-    }
     return { success, studentId };
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingStudent(null);
+    fetchStudents();
+  };
+
+  const handlePhotoSaved = (studentId: string, profilePhotoUrl: string) => {
+    useStudentsStore.setState((state) => ({
+      students: state.students.map((s) =>
+        s.id === studentId ? { ...s, profilePhotoUrl } : s,
+      ),
+    }));
   };
 
   const handleDelete = async () => {
@@ -243,19 +252,19 @@ export default function StudentsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      {/* Table — scroll solo dentro de la tarjeta en móvil */}
+      <div className="card-app">
+        <div className="table-scroll">
+          <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alumno</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Nac.</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ingreso</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apoderado</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mensualidad</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Fecha Nac.</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Ingreso</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Apoderado</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Sucursal</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Categoría</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mensualidad</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
@@ -313,41 +322,41 @@ export default function StudentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4 hidden lg:table-cell">
                         <p className="text-sm text-gray-600 flex items-center">
-                          <CalendarIcon className="w-4 h-4 mr-1 text-gray-400" />
+                          <CalendarIcon className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
                           {formatDate(student.birthDate)}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4 hidden md:table-cell">
                         <p className="text-sm text-gray-600">
                           {student.enrollmentDate
                             ? formatDate(student.enrollmentDate)
                             : '—'}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4 hidden xl:table-cell">
                         <p className="text-sm text-gray-600 flex items-center">
-                          <UserIcon className="w-4 h-4 mr-1 text-gray-400" />
+                          <UserIcon className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
                           {getParentName(student)}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4 hidden lg:table-cell">
                         <p className="text-sm text-gray-600 flex items-center">
-                          <BuildingOfficeIcon className="w-4 h-4 mr-1 text-gray-400" />
+                          <BuildingOfficeIcon className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
                           {getBranchName(student.branchId)}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4 hidden md:table-cell">
                         <p className="text-sm text-gray-600 flex items-center">
-                          <AcademicCapIcon className="w-4 h-4 mr-1 text-gray-400" />
+                          <AcademicCapIcon className="w-4 h-4 mr-1 text-gray-400 shrink-0" />
                           {getCategoryName(student.categoryId)}
                           {(student as { discountPercent?: number }).discountPercent
                             ? ` (-${(student as { discountPercent?: number }).discountPercent}%)`
                             : ''}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 md:px-6 py-4">
                         {(() => {
                           const badge = getMembershipBadge(student);
                           const pending = needsPayment(student);
@@ -416,15 +425,13 @@ export default function StudentsPage() {
       {/* Modals */}
       <StudentFormModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingStudent(null);
-        }}
+        onClose={handleModalClose}
         student={editingStudent}
         branches={branches}
         categories={categories}
         parents={parents}
         onSubmit={handleSubmit}
+        onPhotoSaved={handlePhotoSaved}
         loading={formLoading}
       />
 
